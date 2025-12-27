@@ -87,8 +87,9 @@ Vercel should auto-detect:
 ### 4. Configure Cron Jobs
 
 The `vercel.json` file already includes cron job configuration:
-- `/api/process-staging-queue` - Runs every minute
-- `/api/reset-monthly-quotas` - Runs on 1st of each month
+- `/api/reset-monthly-quotas` - Runs on 1st of each month (compatible with Hobby plan)
+
+**Note**: Staging queue processing happens immediately when users request staging (no cron needed). The frontend polls for status updates.
 
 **Important**: After first deployment, verify cron jobs are active in Vercel Dashboard → Settings → Cron Jobs
 
