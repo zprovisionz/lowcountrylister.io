@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { filterAddresses } from '../data/sc_addresses';
 import { loadGoogleMapsAPI } from '../lib/loadGoogleMaps';
 
 declare global {
@@ -30,10 +29,9 @@ export function useGooglePlacesAutocomplete(input: string): string[] {
   useEffect(() => {
     const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
-    // Fallback to static list if no API key or input too short
+    // Only use Google Places if API key exists, input is long enough, and API is loaded
     if (!input || input.length < 3 || !apiKey || !isGoogleLoaded) {
-      const staticSuggestions = filterAddresses(input);
-      setSuggestions(staticSuggestions);
+      setSuggestions([]);
       return;
     }
 
@@ -49,7 +47,9 @@ export function useGooglePlacesAutocomplete(input: string): string[] {
               country: 'us',
               administrativeArea: 'SC' // South Carolina only
             },
-            types: ['address'],
+            types: ['address'], // Only return addresses, not establishments or cities
+            location: new window.google.maps.LatLng(32.7765, -79.9311), // Charleston center
+            radius: 50000, // 50km radius around Charleston
           },
           (predictions: GooglePlacesAutocompleteResult[] | null, status: string) => {
             if (
@@ -57,34 +57,42 @@ export function useGooglePlacesAutocomplete(input: string): string[] {
               predictions &&
               predictions.length > 0
             ) {
-              // Filter to ensure results are in South Carolina
+              // Filter to ensure results are in South Carolina and are actual addresses
+              // Remove the overly restrictive filtering - trust Google's address type
               const scPredictions = predictions
-                .filter(p => 
-                  p.description.toLowerCase().includes('sc') ||
-                  p.description.toLowerCase().includes('south carolina') ||
-                  p.description.toLowerCase().includes('charleston') ||
-                  p.description.toLowerCase().includes('mount pleasant') ||
-                  p.description.toLowerCase().includes('summerville')
-                )
+                .filter(p => {
+                  const desc = p.description.toLowerCase();
+                  // Ensure it's in SC and looks like an address (has street number or common address indicators)
+                  return (
+                    desc.includes(', sc') || 
+                    desc.includes(', south carolina') ||
+                    /^\d+\s/.test(p.description) || // Starts with number (street address)
+                    desc.includes('street') ||
+                    desc.includes('avenue') ||
+                    desc.includes('road') ||
+                    desc.includes('drive') ||
+                    desc.includes('lane') ||
+                    desc.includes('court') ||
+                    desc.includes('circle') ||
+                    desc.includes('way') ||
+                    desc.includes('boulevard') ||
+                    desc.includes('place')
+                  );
+                })
                 .map(p => p.description)
                 .slice(0, 8); // Limit to 8 suggestions
               
-              if (scPredictions.length > 0) {
-                setSuggestions(scPredictions);
-              } else {
-                // Fallback to static list if no SC results
-                setSuggestions(filterAddresses(input));
-              }
+              setSuggestions(scPredictions.length > 0 ? scPredictions : []);
             } else {
-              // Fallback to static list on error or no results
-              setSuggestions(filterAddresses(input));
+              // No results - don't show fallback town names
+              setSuggestions([]);
             }
           }
         );
       } catch (error) {
-        // Fallback to static list on error
-        console.warn('Google Places API error, using fallback:', error);
-        setSuggestions(filterAddresses(input));
+        // On error, don't show fallback - just show empty
+        console.warn('Google Places API error:', error);
+        setSuggestions([]);
       }
     }, 300); // 300ms debounce
 

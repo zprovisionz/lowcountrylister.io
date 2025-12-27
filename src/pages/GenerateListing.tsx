@@ -14,6 +14,8 @@ import {
   ArrowRight,
   ArrowLeft,
   ChevronDown,
+  Zap,
+  Edit3,
 } from 'lucide-react';
 import ResultsDisplay from '../components/ResultsDisplay';
 import UpgradeModal from '../components/UpgradeModal';
@@ -59,6 +61,8 @@ export default function GenerateListing() {
   const [includeSocial, setIncludeSocial] = useState(false);
   const [detectedNeighborhood, setDetectedNeighborhood] = useState<NeighborhoodDetectionResult | null>(null);
   const [hasAppliedDefaults, setHasAppliedDefaults] = useState(false);
+  const [quickGenerated, setQuickGenerated] = useState(false); // Track if quick generation was done
+  const [showRefineOptions, setShowRefineOptions] = useState(false); // Show refine UI after quick generate
 
   const [generating, setGenerating] = useState(false);
   const [results, setResults] = useState<{
@@ -174,6 +178,99 @@ export default function GenerateListing() {
     }
   };
 
+  // New function for quick generation with just address
+  const handleQuickGenerate = async () => {
+    if (!address.trim()) {
+      showNotification('Please enter an address first', 'warning');
+      return;
+    }
+
+    if (user && !canGenerate) {
+      setShowUpgradeModal(true);
+      return;
+    }
+
+    setGenerating(true);
+
+    try {
+      // Get auth token for API call
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      // Call the API with just address (quick mode - API will auto-populate amenities)
+      const result = await apiCall<{
+        success: boolean;
+        data?: {
+          id: string;
+          mls_description: string;
+          airbnb_description?: string;
+          social_captions?: string[];
+          confidence_level: 'high' | 'medium';
+        };
+        error?: string;
+        code?: string;
+      }>(
+        '/api/generate',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            address,
+            property_type: mapPropertyTypeToAPI(propertyType),
+            bedrooms: bedrooms ? parseInt(bedrooms) : undefined,
+            bathrooms: bathrooms ? parseFloat(bathrooms) : undefined,
+            square_feet: squareFeet ? parseInt(squareFeet) : undefined,
+            amenities: [], // Empty - API will auto-populate from neighborhood
+            photo_urls: [],
+            include_airbnb: false,
+            include_social: false,
+          }),
+        },
+        2 // 2 retries
+      );
+
+      if (!result.success || !result.data) {
+        throw new Error('Invalid response from server');
+      }
+
+      // Calculate authenticity for display
+      const authenticity = neighborhoodService.calculateCharlestonAuthenticity(result.data.mls_description);
+
+      setResults({
+        mls: result.data.mls_description,
+        airbnb: result.data.airbnb_description || undefined,
+        social: result.data.social_captions || undefined,
+        confidence: result.data.confidence_level || 'medium',
+        generationId: result.data.id,
+        authenticity: {
+          score: authenticity.score,
+          suggestions: authenticity.suggestions,
+        },
+      });
+
+      setQuickGenerated(true);
+      setShowRefineOptions(true);
+      await refreshProfile();
+      showNotification('Quick listing generated! You can now refine it with amenities.', 'success');
+    } catch (error) {
+      const parsedError = parseApiError(error);
+      
+      if (error instanceof AppError && error.code === 'QUOTA_EXCEEDED') {
+        setShowUpgradeModal(true);
+        showNotification('You\'ve reached your monthly generation limit. Upgrade to continue.', 'warning', 7000);
+        return;
+      }
+      
+      showNotification(parsedError.message, 'error', 7000);
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -183,8 +280,9 @@ export default function GenerateListing() {
       return;
     }
 
-    // Validate amenities are selected
-    if (selectedAmenities.length === 0 && customAmenities.length === 0) {
+    // If this is a refinement (quick generated already), allow empty amenities
+    // Otherwise, require amenities
+    if (!quickGenerated && selectedAmenities.length === 0 && customAmenities.length === 0) {
       setCurrentStep(2); // Go back to amenities step
       showNotification(
         'Please select at least one feature or amenity before generating your listing.',
@@ -329,8 +427,10 @@ export default function GenerateListing() {
         },
       });
 
+      setQuickGenerated(false); // Reset after refinement
+      setShowRefineOptions(false);
       await refreshProfile();
-      showNotification('Listing generated successfully!', 'success');
+      showNotification('Listing refined successfully!', 'success');
     } catch (error) {
       const parsedError = parseApiError(error);
       
@@ -519,6 +619,12 @@ export default function GenerateListing() {
             onAddressChange={(value) => {
               setAddress(value);
               setHasAppliedDefaults(false);
+              // Reset quick generated state when address changes
+              if (quickGenerated) {
+                setQuickGenerated(false);
+                setShowRefineOptions(false);
+                setResults(null);
+              }
             }}
             bedrooms={bedrooms}
             onBedroomsChange={setBedrooms}
@@ -755,6 +861,75 @@ export default function GenerateListing() {
           </div>
         )}
 
+        {/* Quick Generate Option - Show on Basics step if not yet generated */}
+        {currentStep === 0 && !quickGenerated && address.trim().length > 5 && (
+          <div className="mb-6">
+            <Alert variant="info">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <p className="font-semibold mb-1">Quick Generate Available</p>
+                  <p className="text-sm">
+                    Generate a listing description with just the address. You can refine it with amenities and details afterward.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  onClick={handleQuickGenerate}
+                  disabled={generating || !canGenerate || !address.trim()}
+                  isLoading={generating}
+                  icon={<Zap className="w-4 h-4" />}
+                  size="sm"
+                  className="flex-shrink-0"
+                >
+                  Quick Generate
+                </Button>
+              </div>
+            </Alert>
+          </div>
+        )}
+
+        {/* Refine Options - Show after quick generate */}
+        {showRefineOptions && results && (
+          <div className="mb-6">
+            <Alert variant="success">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <p className="font-semibold mb-1">Quick listing generated!</p>
+                  <p className="text-sm">
+                    Add amenities, photos, and details to refine your listing description.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setCurrentStep(2); // Go to amenities step
+                      setShowRefineOptions(false);
+                    }}
+                    variant="secondary"
+                    icon={<Edit3 className="w-4 h-4" />}
+                    size="sm"
+                  >
+                    Add Amenities
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setCurrentStep(1); // Go to photos step
+                      setShowRefineOptions(false);
+                    }}
+                    variant="secondary"
+                    icon={<Camera className="w-4 h-4" />}
+                    size="sm"
+                  >
+                    Add Photos
+                  </Button>
+                </div>
+              </div>
+            </Alert>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-8">
           <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-2xl border border-gray-700/50 p-6 md:p-8">
             <div className="mb-8">
@@ -801,9 +976,9 @@ export default function GenerateListing() {
                   icon={!generating && <Sparkles className="w-5 h-5" />}
                   iconPosition="left"
                   className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
-                  aria-label={generating ? 'Generating listing descriptions' : 'Generate listing descriptions'}
+                  aria-label={generating ? 'Generating listing descriptions' : quickGenerated ? 'Refine listing' : 'Generate listing descriptions'}
                 >
-                  {generating ? 'Generating...' : !canGenerate ? 'Upgrade to Generate' : 'Generate Descriptions'}
+                  {generating ? 'Generating...' : !canGenerate ? 'Upgrade to Generate' : quickGenerated ? 'Refine Listing' : 'Generate Descriptions'}
                 </Button>
               )}
             </div>
