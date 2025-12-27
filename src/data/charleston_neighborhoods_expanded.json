@@ -1,0 +1,643 @@
+{
+  "neighborhoods": [
+    {
+      "name": "Downtown Charleston",
+      "aliases": ["Peninsula", "Historic District", "Downtown", "Historic Peninsula"],
+      "bounds": {"north": 32.7916, "south": 32.7616, "east": -79.9250, "west": -79.9450},
+      "zip_codes": ["29401", "29403"],
+      "description": "The heart of Charleston's historic charm with cobblestone streets, antebellum architecture, and walkable access to world-class dining and shopping.",
+      "vibes": "Vibrant historic core with dining and culture",
+      "attractions": ["King Street", "City Market", "Waterfront Park", "Marion Square"],
+      "scenery": ["Cobblestone", "Harbor views", "Gas lanterns", "Historic architecture"],
+      "proximities": {"to_beaches": "20 min", "to_downtown": "Central"},
+      "typical_amenities": ["Historic Charm / Original Details", "Piazza or Porch", "Hardwood Floors", "Walkable to King Street / Downtown"],
+      "vocabulary": {
+        "porch": "piazza",
+        "balcony": "piazza",
+        "style": "Charleston Single",
+        "neighborhood_vibe": "historic elegance meets modern luxury",
+        "proximity_terms": ["steps from King Street", "in the heart of the Peninsula", "walking distance to Waterfront Park", "blocks from Rainbow Row"]
+      },
+      "landmarks": ["King Street", "Waterfront Park", "Rainbow Row", "The Battery", "Marion Square", "Charleston City Market"],
+      "selling_points": ["Unparalleled walkability", "World-class dining and shopping", "Rich history and architecture", "Vibrant cultural scene"]
+    },
+    {
+      "name": "South of Broad",
+      "aliases": ["SOB", "South of Broad Street"],
+      "bounds": {"north": 32.7750, "south": 32.7616, "east": -79.9250, "west": -79.9450},
+      "zip_codes": ["29401"],
+      "description": "Charleston's most exclusive neighborhood featuring grand historic mansions, iconic Battery views, and proximity to Rainbow Row.",
+      "vibes": "Exclusive grand mansions",
+      "attractions": ["Battery", "Rainbow Row", "White Point Garden", "Historic churches"],
+      "scenery": ["Oaks", "Harbor", "Historic mansions", "Gas lanterns"],
+      "proximities": {"to_downtown": "Walkable", "to_beaches": "15 min"},
+      "typical_amenities": ["Historic Charm / Original Details", "Piazza or Porch", "Luxury Finishes", "Harbor Views"],
+      "vocabulary": {
+        "style": "Charleston Single",
+        "neighborhood_vibe": "exclusive historic grandeur",
+        "proximity_terms": ["steps from the Battery", "in prestigious South of Broad", "near Rainbow Row", "overlooking Charleston Harbor"]
+      },
+      "landmarks": ["The Battery", "Rainbow Row", "White Point Garden", "St. Michael's Church"],
+      "selling_points": ["Most prestigious address in Charleston", "Historic architecture", "Harbor and Battery views", "Walkable to everything"]
+    },
+    {
+      "name": "French Quarter",
+      "aliases": ["French Quarter District"],
+      "bounds": {"north": 32.7850, "south": 32.7750, "east": -79.9300, "west": -79.9400},
+      "zip_codes": ["29401"],
+      "description": "Historic district known for art galleries, historic churches, and cultural venues in the heart of downtown.",
+      "vibes": "Art galleries and historic churches",
+      "attractions": ["Dock Street Theatre", "French Huguenot Church", "Art galleries", "Historic churches"],
+      "scenery": ["Gas lanterns", "Historic architecture", "Cobblestone streets"],
+      "proximities": {"to_King_Street": "Short walk", "to_downtown": "Central"},
+      "typical_amenities": ["Historic Charm / Original Details", "Piazza or Porch", "Walkable to King Street / Downtown"],
+      "vocabulary": {
+        "style": "Historic Charleston",
+        "neighborhood_vibe": "cultural and artistic",
+        "proximity_terms": ["in the French Quarter", "steps from Dock Street Theatre", "near King Street galleries"]
+      },
+      "landmarks": ["Dock Street Theatre", "French Huguenot Church", "Circular Congregational Church"],
+      "selling_points": ["Cultural hub", "Art galleries", "Historic churches", "Central location"]
+    },
+    {
+      "name": "Ansonborough",
+      "aliases": ["Ansonborough Historic District"],
+      "bounds": {"north": 32.7900, "south": 32.7800, "east": -79.9300, "west": -79.9400},
+      "zip_codes": ["29401"],
+      "description": "Restored residential neighborhood with walkable streets and proximity to Gaillard Center and downtown attractions.",
+      "vibes": "Restored residential walkability",
+      "attractions": ["Gaillard Center", "Historic homes", "Walkable streets"],
+      "scenery": ["Brick sidewalks", "Historic architecture", "Tree-lined"],
+      "proximities": {"to_downtown": "Central", "to_King_Street": "Short walk"},
+      "typical_amenities": ["Historic Charm / Original Details", "Piazza or Porch", "Walkable to King Street / Downtown"],
+      "vocabulary": {
+        "style": "Historic Charleston",
+        "neighborhood_vibe": "restored residential charm",
+        "proximity_terms": ["in Ansonborough", "near Gaillard Center", "walkable to downtown"]
+      },
+      "landmarks": ["Gaillard Center", "Ansonborough Square"],
+      "selling_points": ["Restored historic homes", "Walkable", "Central location", "Cultural venues nearby"]
+    },
+    {
+      "name": "Harleston Village",
+      "aliases": ["Harleston"],
+      "bounds": {"north": 32.7850, "south": 32.7750, "east": -79.9400, "west": -79.9500},
+      "zip_codes": ["29401"],
+      "description": "Historic neighborhood blending academic institutions with residential charm, featuring Colonial Lake and tree-lined streets.",
+      "vibes": "Academic historic blend",
+      "attractions": ["Colonial Lake", "College of Charleston", "Historic homes"],
+      "scenery": ["Tree-lined", "Historic architecture", "Lake views"],
+      "proximities": {"to_King_Street": "Short walk", "to_downtown": "Central"},
+      "typical_amenities": ["Historic Charm / Original Details", "Piazza or Porch", "Walkable to King Street / Downtown"],
+      "vocabulary": {
+        "style": "Historic Charleston",
+        "neighborhood_vibe": "academic and historic",
+        "proximity_terms": ["near Colonial Lake", "in Harleston Village", "walkable to College of Charleston"]
+      },
+      "landmarks": ["Colonial Lake", "College of Charleston", "St. Luke's Chapel"],
+      "selling_points": ["Colonial Lake proximity", "College of Charleston nearby", "Historic character", "Walkable"]
+    },
+    {
+      "name": "Wagener Terrace",
+      "aliases": ["Wagener"],
+      "bounds": {"north": 32.8000, "south": 32.7900, "east": -79.9400, "west": -79.9500},
+      "zip_codes": ["29403"],
+      "description": "Uptown neighborhood known for Hampton Park, mature oaks, and a strong sense of community.",
+      "vibes": "Uptown park community",
+      "attractions": ["Hampton Park", "Community events", "Parks"],
+      "scenery": ["Mature oaks", "Park views", "Residential"],
+      "proximities": {"to_downtown": "Bike distance", "to_beaches": "25 min"},
+      "typical_amenities": ["Mature Live Oaks / Oak-Lined", "Fenced Yard", "Hardwood Floors"],
+      "vocabulary": {
+        "style": "Uptown Charleston",
+        "neighborhood_vibe": "park-adjacent community",
+        "proximity_terms": ["near Hampton Park", "uptown Charleston", "bike distance to downtown"]
+      },
+      "landmarks": ["Hampton Park", "The Citadel"],
+      "selling_points": ["Hampton Park access", "Mature trees", "Community feel", "Affordable uptown option"]
+    },
+    {
+      "name": "Cannonborough-Elliotborough",
+      "aliases": ["Cannon-Elliott", "Upper King"],
+      "bounds": {"north": 32.7900, "south": 32.7800, "east": -79.9350, "west": -79.9450},
+      "zip_codes": ["29403"],
+      "description": "Trendy neighborhood known for Upper King Street's foodie scene, art galleries, and vibrant nightlife.",
+      "vibes": "Trendy foodie/artist",
+      "attractions": ["Upper King", "Restaurants", "Art galleries", "Bars"],
+      "scenery": ["Murals", "Eclectic architecture", "Urban"],
+      "proximities": {"to_downtown": "Adjacent", "to_King_Street": "On Upper King"},
+      "typical_amenities": ["Walkable to King Street / Downtown", "Historic Charm / Original Details"],
+      "vocabulary": {
+        "style": "Historic meets modern",
+        "neighborhood_vibe": "trendy and vibrant",
+        "proximity_terms": ["on Upper King", "in Cannonborough", "near the foodie scene"]
+      },
+      "landmarks": ["Upper King Street", "Art galleries"],
+      "selling_points": ["Foodie destination", "Art scene", "Nightlife", "Walkable"]
+    },
+    {
+      "name": "Radcliffeborough",
+      "aliases": ["Radcliffe"],
+      "bounds": {"north": 32.7950, "south": 32.7850, "east": -79.9400, "west": -79.9500},
+      "zip_codes": ["29403"],
+      "description": "Residential neighborhood near Medical University and College of Charleston, offering walkable access to downtown.",
+      "vibes": "Near medical/university",
+      "attractions": ["MUSC", "College of Charleston", "Medical district"],
+      "scenery": ["Residential", "Tree-lined", "Historic"],
+      "proximities": {"to_downtown": "Walkable", "to_King_Street": "Short walk"},
+      "typical_amenities": ["Walkable to King Street / Downtown", "Historic Charm / Original Details"],
+      "vocabulary": {
+        "style": "Historic residential",
+        "neighborhood_vibe": "academic and medical",
+        "proximity_terms": ["near MUSC", "walkable to downtown", "close to College of Charleston"]
+      },
+      "landmarks": ["MUSC", "College of Charleston"],
+      "selling_points": ["Medical district proximity", "Walkable", "Historic homes", "Central location"]
+    },
+    {
+      "name": "Park West",
+      "aliases": ["Park West Mount Pleasant"],
+      "bounds": {"north": 32.8700, "south": 32.8400, "east": -79.8000, "west": -79.8500},
+      "zip_codes": ["29466"],
+      "description": "Master-planned family community with pools, tennis courts, clubhouse, and top-rated schools in Mount Pleasant.",
+      "vibes": "Master-planned family recreation",
+      "attractions": ["Pools/tennis", "Clubhouse", "Parks", "Trails"],
+      "scenery": ["Ponds/trails", "Modern homes", "Landscaped"],
+      "proximities": {"to_beaches": "15 min", "schools": "Top-rated", "to_downtown": "20 min"},
+      "typical_amenities": ["Master-Planned Amenities", "Community Pool", "Top-Rated Schools Nearby", "Fenced Yard"],
+      "vocabulary": {
+        "style": "Modern family",
+        "neighborhood_vibe": "family-friendly master-planned",
+        "proximity_terms": ["in Park West", "Mount Pleasant's premier family community", "top-rated schools", "minutes from beaches"]
+      },
+      "landmarks": ["Park West Clubhouse", "Park West pools"],
+      "selling_points": ["Top-rated schools", "Family amenities", "Master-planned", "Beach access"]
+    },
+    {
+      "name": "Dunes West",
+      "aliases": ["Dunes West Golf"],
+      "bounds": {"north": 32.8800, "south": 32.8500, "east": -79.8000, "west": -79.8500},
+      "zip_codes": ["29466"],
+      "description": "Gated golf community with marsh views, clubhouse amenities, and river access in Mount Pleasant.",
+      "vibes": "Gated golf marsh views",
+      "attractions": ["Golf clubhouse", "Golf course", "River access"],
+      "scenery": ["River marshes", "Golf course", "Gated"],
+      "proximities": {"to_downtown": "20 min", "to_beaches": "15 min"},
+      "typical_amenities": ["Golf Course Access / Community", "Marsh Views / Waterfront", "Master-Planned Amenities"],
+      "vocabulary": {
+        "style": "Golf community",
+        "neighborhood_vibe": "gated golf living",
+        "proximity_terms": ["in Dunes West", "gated golf community", "marsh and river views"]
+      },
+      "landmarks": ["Dunes West Golf Club", "Wando River"],
+      "selling_points": ["Gated community", "Golf course", "Marsh views", "River access"]
+    },
+    {
+      "name": "Carolina Park",
+      "aliases": ["Carolina Park Mount Pleasant"],
+      "bounds": {"north": 32.9000, "south": 32.8700, "east": -79.8000, "west": -79.8500},
+      "zip_codes": ["29466"],
+      "description": "Newer master-planned community with modern amenities, riverside pool, and parks in Mount Pleasant.",
+      "vibes": "Newer master-planned amenities",
+      "attractions": ["Riverside pool", "Parks", "Trails", "Community center"],
+      "scenery": ["Parks", "Modern", "Riverside"],
+      "proximities": {"to_beaches": "15 min", "to_downtown": "25 min"},
+      "typical_amenities": ["Master-Planned Amenities", "Community Pool", "New Construction", "Move-In Ready"],
+      "vocabulary": {
+        "style": "Modern master-planned",
+        "neighborhood_vibe": "new construction community",
+        "proximity_terms": ["in Carolina Park", "newer Mount Pleasant community", "modern amenities"]
+      },
+      "landmarks": ["Carolina Park amenities"],
+      "selling_points": ["New construction", "Modern amenities", "Family-friendly", "Riverside location"]
+    },
+    {
+      "name": "I'On",
+      "aliases": ["Ion", "I'On Village"],
+      "bounds": {"north": 32.8300, "south": 32.8000, "east": -79.8500, "west": -79.9000},
+      "zip_codes": ["29464"],
+      "description": "Walkable neo-traditional community with lakes, village center, and I'On Club amenities in Mount Pleasant.",
+      "vibes": "Walkable neo-traditional lakes",
+      "attractions": ["I'On Club", "Village center", "Lakes", "Parks"],
+      "scenery": ["Lakes/village", "Neo-traditional", "Walkable"],
+      "proximities": {"to_downtown": "15 min", "to_beaches": "10 min"},
+      "typical_amenities": ["Master-Planned Amenities", "Walkable to King Street / Downtown", "Luxury Finishes"],
+      "vocabulary": {
+        "style": "Neo-traditional",
+        "neighborhood_vibe": "walkable village living",
+        "proximity_terms": ["in I'On", "walkable village", "neo-traditional design"]
+      },
+      "landmarks": ["I'On Club", "I'On Village"],
+      "selling_points": ["Walkable design", "Village center", "Lakes", "Unique architecture"]
+    },
+    {
+      "name": "Old Village",
+      "aliases": ["Old Village Mount Pleasant", "Mount Pleasant Old Village"],
+      "bounds": {"north": 32.8100, "south": 32.7800, "east": -79.8500, "west": -79.9000},
+      "zip_codes": ["29464"],
+      "description": "Historic harbor-side neighborhood with live oaks, Pitt Street Bridge, and walkable coastal charm in Mount Pleasant.",
+      "vibes": "Historic harbor charm",
+      "attractions": ["Pitt Street Bridge", "Shem Creek", "Historic homes", "Waterfront"],
+      "scenery": ["Live oaks/water", "Historic", "Harbor views"],
+      "proximities": {"to_beaches": "5 min", "to_downtown": "10 min"},
+      "typical_amenities": ["Historic Charm / Original Details", "Marsh Views / Waterfront", "Walkable to King Street / Downtown"],
+      "vocabulary": {
+        "style": "Historic Lowcountry",
+        "neighborhood_vibe": "historic harbor charm",
+        "proximity_terms": ["in Old Village", "historic Mount Pleasant", "near Pitt Street Bridge", "harbor-side living"]
+      },
+      "landmarks": ["Pitt Street Bridge", "Shem Creek", "Mount Pleasant Academy"],
+      "selling_points": ["Historic character", "Harbor proximity", "Walkable", "Beach access"]
+    },
+    {
+      "name": "Brickyard Plantation",
+      "aliases": ["Brickyard"],
+      "bounds": {"north": 32.8600, "south": 32.8300, "east": -79.8000, "west": -79.8500},
+      "zip_codes": ["29466"],
+      "description": "Waterfront community with boat access, marsh views, and creek access in Mount Pleasant.",
+      "vibes": "Waterfront boat access",
+      "attractions": ["Boat launch", "Marsh access", "Creek access"],
+      "scenery": ["Marsh/creek", "Waterfront", "Natural"],
+      "proximities": {"to_downtown": "15 min", "to_beaches": "15 min"},
+      "typical_amenities": ["Boat Access / Dock", "Marsh Views / Waterfront", "Fenced Yard"],
+      "vocabulary": {
+        "style": "Waterfront",
+        "neighborhood_vibe": "boating lifestyle",
+        "proximity_terms": ["in Brickyard Plantation", "waterfront living", "boat access"]
+      },
+      "landmarks": ["Brickyard boat launch"],
+      "selling_points": ["Boat access", "Marsh views", "Waterfront", "Natural setting"]
+    },
+    {
+      "name": "Hamlin Plantation",
+      "aliases": ["Hamlin"],
+      "bounds": {"north": 32.8700, "south": 32.8400, "east": -79.7500, "west": -79.8000},
+      "zip_codes": ["29466"],
+      "description": "Family community with sound access, clubhouse amenities, and marshfront views in Mount Pleasant.",
+      "vibes": "Family sound access",
+      "attractions": ["Clubhouse", "Sound access", "Parks"],
+      "scenery": ["Marshfront", "Sound views", "Family-friendly"],
+      "proximities": {"to_downtown": "20 min", "to_beaches": "10 min"},
+      "typical_amenities": ["Master-Planned Amenities", "Marsh Views / Waterfront", "Community Pool"],
+      "vocabulary": {
+        "style": "Family community",
+        "neighborhood_vibe": "family sound living",
+        "proximity_terms": ["in Hamlin Plantation", "sound access", "family community"]
+      },
+      "landmarks": ["Hamlin Plantation clubhouse"],
+      "selling_points": ["Sound access", "Family amenities", "Marsh views", "Beach proximity"]
+    },
+    {
+      "name": "Belle Hall",
+      "aliases": ["Belle Hall Plantation"],
+      "bounds": {"north": 32.8500, "south": 32.8200, "east": -79.8500, "west": -79.9000},
+      "zip_codes": ["29464"],
+      "description": "Convenient Mount Pleasant neighborhood with shopping, ponds, and easy access to downtown and beaches.",
+      "vibes": "Convenient shopping",
+      "attractions": ["Belle Hall Shopping", "Shopping centers", "Restaurants"],
+      "scenery": ["Ponds", "Established", "Convenient"],
+      "proximities": {"to_downtown": "15 min", "to_beaches": "10 min"},
+      "typical_amenities": ["Fenced Yard", "Community Pool", "Top-Rated Schools Nearby"],
+      "vocabulary": {
+        "style": "Established community",
+        "neighborhood_vibe": "convenient and established",
+        "proximity_terms": ["in Belle Hall", "convenient Mount Pleasant", "near shopping"]
+      },
+      "landmarks": ["Belle Hall Shopping Center"],
+      "selling_points": ["Shopping convenience", "Established", "Central location", "Family-friendly"]
+    },
+    {
+      "name": "Snee Farm",
+      "aliases": ["Snee Farm Country Club"],
+      "bounds": {"north": 32.8400, "south": 32.8100, "east": -79.8500, "west": -79.9000},
+      "zip_codes": ["29464"],
+      "description": "Established country club community with golf, lakes, and mature oaks in Mount Pleasant.",
+      "vibes": "Established country club",
+      "attractions": ["Golf", "Country club", "Lakes"],
+      "scenery": ["Lakes/oaks", "Golf course", "Mature"],
+      "proximities": {"to_beaches": "10 min", "to_downtown": "15 min"},
+      "typical_amenities": ["Golf Course Access / Community", "Mature Live Oaks / Oak-Lined", "Master-Planned Amenities"],
+      "vocabulary": {
+        "style": "Country club",
+        "neighborhood_vibe": "established country club living",
+        "proximity_terms": ["in Snee Farm", "country club community", "established Mount Pleasant"]
+      },
+      "landmarks": ["Snee Farm Country Club"],
+      "selling_points": ["Country club", "Golf course", "Mature community", "Established"]
+    },
+    {
+      "name": "Rivertowne",
+      "aliases": ["Rivertowne Country Club"],
+      "bounds": {"north": 32.8800, "south": 32.8500, "east": -79.7500, "west": -79.8000},
+      "zip_codes": ["29466"],
+      "description": "Golf and waterfront community on the Wando River with Arnold Palmer golf course in Mount Pleasant.",
+      "vibes": "Golf waterfront",
+      "attractions": ["Arnold Palmer golf", "Golf course", "River access"],
+      "scenery": ["Wando River", "Golf course", "Waterfront"],
+      "proximities": {"to_beaches": "15 min", "to_downtown": "20 min"},
+      "typical_amenities": ["Golf Course Access / Community", "Marsh Views / Waterfront", "Boat Access / Dock"],
+      "vocabulary": {
+        "style": "Golf waterfront",
+        "neighborhood_vibe": "golf and river living",
+        "proximity_terms": ["in Rivertowne", "Arnold Palmer golf", "Wando River waterfront"]
+      },
+      "landmarks": ["Rivertowne Country Club", "Wando River"],
+      "selling_points": ["Arnold Palmer golf", "River access", "Waterfront", "Golf community"]
+    },
+    {
+      "name": "Nexton",
+      "aliases": ["Nexton Summerville"],
+      "bounds": {"north": 33.0200, "south": 32.9800, "east": -80.1000, "west": -80.1500},
+      "zip_codes": ["29486"],
+      "description": "Innovative walkable village community with modern amenities, Midtown Club, and top schools in Summerville.",
+      "vibes": "Innovative walkable village",
+      "attractions": ["Midtown Club/schools", "Central District", "Parks", "Trails"],
+      "scenery": ["Ponds/modern", "Walkable", "Modern design"],
+      "proximities": {"to_downtown_Charleston": "35 min", "to_historic_Summerville": "10 min"},
+      "typical_amenities": ["Master-Planned Amenities", "New Construction", "Top-Rated Schools Nearby", "Move-In Ready"],
+      "vocabulary": {
+        "style": "Modern walkable",
+        "neighborhood_vibe": "innovative village living",
+        "proximity_terms": ["in Nexton", "walkable village", "modern Summerville", "innovative community"]
+      },
+      "landmarks": ["Nexton Central District", "Midtown Club"],
+      "selling_points": ["Walkable design", "Modern amenities", "Top schools", "Innovative planning"]
+    },
+    {
+      "name": "Cane Bay Plantation",
+      "aliases": ["Cane Bay", "Lakes of Cane Bay"],
+      "bounds": {"north": 33.0100, "south": 32.9800, "east": -80.1500, "west": -80.2000},
+      "zip_codes": ["29486"],
+      "description": "Lakeside master-planned community with 300-acre lake, YMCA, and water features in Summerville.",
+      "vibes": "Lakeside master-planned",
+      "attractions": ["YMCA/lakes", "300-acre lake", "Parks", "Trails"],
+      "scenery": ["Water features", "Lakes", "Modern"],
+      "proximities": {"to_downtown_Charleston": "40 min", "to_historic_Summerville": "15 min"},
+      "typical_amenities": ["Master-Planned Amenities", "Community Pool", "New Construction", "Move-In Ready"],
+      "vocabulary": {
+        "style": "Lakeside modern",
+        "neighborhood_vibe": "lakeside master-planned",
+        "proximity_terms": ["in Cane Bay", "lakeside living", "300-acre lake", "master-planned Summerville"]
+      },
+      "landmarks": ["Cane Bay YMCA", "Cane Bay Lake"],
+      "selling_points": ["300-acre lake", "YMCA access", "Master-planned", "Water features"]
+    },
+    {
+      "name": "Summerville Historic District",
+      "aliases": ["Historic Summerville", "Flowertown"],
+      "bounds": {"north": 33.0000, "south": 32.9800, "east": -80.1800, "west": -80.2000},
+      "zip_codes": ["29483"],
+      "description": "Historic downtown Summerville known as Flowertown, featuring azaleas, pines, and Victorian architecture.",
+      "vibes": "Flowertown azaleas/pines",
+      "attractions": ["Azalea Park", "Historic downtown", "Flowertown Festival", "Victorian homes"],
+      "scenery": ["Victorian", "Azaleas", "Pines", "Historic"],
+      "proximities": {"to_downtown_Charleston": "30 min", "to_Nexton": "10 min"},
+      "typical_amenities": ["Historic Charm / Original Details", "Mature Live Oaks / Oak-Lined", "Walkable to King Street / Downtown"],
+      "vocabulary": {
+        "style": "Victorian historic",
+        "neighborhood_vibe": "Flowertown's historic charm",
+        "proximity_terms": ["in historic Summerville", "Flowertown", "Victorian architecture", "azalea-lined streets"]
+      },
+      "landmarks": ["Azalea Park", "Summerville Town Square", "Historic homes"],
+      "selling_points": ["Historic character", "Azalea Park", "Victorian architecture", "Small-town charm"]
+    },
+    {
+      "name": "The Ponds",
+      "aliases": ["Ponds Summerville"],
+      "bounds": {"north": 33.0000, "south": 32.9800, "east": -80.2000, "west": -80.2500},
+      "zip_codes": ["29486"],
+      "description": "Nature-focused community with preserved woods, ponds, and farmhouse clubhouse in Summerville.",
+      "vibes": "Nature preservation",
+      "attractions": ["Farmhouse clubhouse", "Nature trails", "Ponds", "Preserved woods"],
+      "scenery": ["Woods/ponds", "Natural", "Preserved"],
+      "proximities": {"to_downtown_Charleston": "35 min", "to_historic_Summerville": "15 min"},
+      "typical_amenities": ["Master-Planned Amenities", "Community Pool", "New Construction"],
+      "vocabulary": {
+        "style": "Nature-focused",
+        "neighborhood_vibe": "nature preservation community",
+        "proximity_terms": ["in The Ponds", "nature-focused", "preserved natural setting"]
+      },
+      "landmarks": ["The Ponds Farmhouse", "Nature preserves"],
+      "selling_points": ["Nature preservation", "Natural setting", "Farmhouse amenities", "Trails"]
+    },
+    {
+      "name": "White Gables",
+      "aliases": ["White Gables Summerville"],
+      "bounds": {"north": 33.0100, "south": 32.9900, "east": -80.1500, "west": -80.2000},
+      "zip_codes": ["29486"],
+      "description": "Charleston-style community with porches, pool, tennis, and picket fences in Summerville.",
+      "vibes": "Charleston-style porches",
+      "attractions": ["Pool/tennis", "Community amenities", "Parks"],
+      "scenery": ["Picket fences", "Charleston-style", "Traditional"],
+      "proximities": {"to_historic_Summerville": "10 min", "to_downtown_Charleston": "35 min"},
+      "typical_amenities": ["Community Pool", "Piazza or Porch", "Fenced Yard"],
+      "vocabulary": {
+        "style": "Charleston-style",
+        "neighborhood_vibe": "traditional Charleston design",
+        "proximity_terms": ["in White Gables", "Charleston-style homes", "traditional design"]
+      },
+      "landmarks": ["White Gables amenities"],
+      "selling_points": ["Charleston-style architecture", "Traditional design", "Community amenities", "Family-friendly"]
+    },
+    {
+      "name": "Shadowmoss",
+      "aliases": ["Shadowmoss Plantation"],
+      "bounds": {"north": 32.8200, "south": 32.7800, "east": -79.9500, "west": -80.0000},
+      "zip_codes": ["29414"],
+      "description": "Golf community with lakes, pools, and fairway views in West Ashley.",
+      "vibes": "Golf lakes",
+      "attractions": ["Golf/pools", "Golf course", "Community amenities"],
+      "scenery": ["Fairways", "Golf course", "Lakes"],
+      "proximities": {"to_downtown": "20 min", "to_beaches": "25 min"},
+      "typical_amenities": ["Golf Course Access / Community", "Community Pool", "Mature Live Oaks / Oak-Lined"],
+      "vocabulary": {
+        "style": "Golf community",
+        "neighborhood_vibe": "golf and lakes",
+        "proximity_terms": ["in Shadowmoss", "golf community", "West Ashley"]
+      },
+      "landmarks": ["Shadowmoss Golf Club"],
+      "selling_points": ["Golf course", "Lakes", "Community amenities", "West Ashley location"]
+    },
+    {
+      "name": "The Crescent",
+      "aliases": ["Crescent West Ashley"],
+      "bounds": {"north": 32.8100, "south": 32.7800, "east": -79.9600, "west": -80.0000},
+      "zip_codes": ["29407"],
+      "description": "Luxury West Ashley neighborhood with large lots, grand oaks, and private feel near downtown.",
+      "vibes": "Luxury large lots",
+      "attractions": ["Large lots", "Private estates"],
+      "scenery": ["Grand oaks", "Large lots", "Luxury"],
+      "proximities": {"to_downtown": "10 min", "to_beaches": "20 min"},
+      "typical_amenities": ["Mature Live Oaks / Oak-Lined", "Luxury Finishes", "Fenced Yard"],
+      "vocabulary": {
+        "style": "Luxury estate",
+        "neighborhood_vibe": "luxury large lot living",
+        "proximity_terms": ["in The Crescent", "luxury West Ashley", "large lot living"]
+      },
+      "landmarks": ["The Crescent"],
+      "selling_points": ["Large lots", "Luxury homes", "Grand oaks", "Close to downtown"]
+    },
+    {
+      "name": "Byrnes Downs",
+      "aliases": ["Byrnes Downs West Ashley"],
+      "bounds": {"north": 32.8000, "south": 32.7700, "east": -79.9600, "west": -80.0000},
+      "zip_codes": ["29407"],
+      "description": "1940s-50s brick neighborhood with mature trees and walkable access to Avondale in West Ashley.",
+      "vibes": "1940s-50s brick charm",
+      "attractions": ["Walkable Avondale", "Historic homes", "Parks"],
+      "scenery": ["Mature trees", "Brick homes", "Established"],
+      "proximities": {"to_downtown": "5-10 min", "to_Avondale": "Walkable"},
+      "typical_amenities": ["Historic Charm / Original Details", "Mature Live Oaks / Oak-Lined", "Hardwood Floors"],
+      "vocabulary": {
+        "style": "Mid-century brick",
+        "neighborhood_vibe": "1940s-50s charm",
+        "proximity_terms": ["in Byrnes Downs", "walkable to Avondale", "brick charm", "West Ashley"]
+      },
+      "landmarks": ["Avondale", "Byrnes Downs Park"],
+      "selling_points": ["Historic brick homes", "Walkable", "Mature trees", "Avondale proximity"]
+    },
+    {
+      "name": "Avondale",
+      "aliases": ["Avondale West Ashley"],
+      "bounds": {"north": 32.8000, "south": 32.7700, "east": -79.9500, "west": -79.9800},
+      "zip_codes": ["29407"],
+      "description": "Trendy West Ashley neighborhood with shops, live music, and eclectic nightlife scene.",
+      "vibes": "Trendy nightlife",
+      "attractions": ["Shops/live music", "Restaurants", "Bars", "Entertainment"],
+      "scenery": ["Eclectic", "Urban", "Vibrant"],
+      "proximities": {"to_downtown": "10 min", "to_beaches": "20 min"},
+      "typical_amenities": ["Walkable to King Street / Downtown", "Historic Charm / Original Details"],
+      "vocabulary": {
+        "style": "Eclectic urban",
+        "neighborhood_vibe": "trendy and vibrant",
+        "proximity_terms": ["in Avondale", "trendy West Ashley", "vibrant nightlife"]
+      },
+      "landmarks": ["Avondale shops", "Live music venues"],
+      "selling_points": ["Nightlife", "Shopping", "Dining", "Vibrant scene"]
+    },
+    {
+      "name": "Riverland Terrace",
+      "aliases": ["Riverland Terrace James Island", "Riverland"],
+      "bounds": {"north": 32.7500, "south": 32.7200, "east": -79.9000, "west": -79.9500},
+      "zip_codes": ["29412"],
+      "description": "Oak-lined James Island neighborhood with boat landing, Terrace Theater, and river views.",
+      "vibes": "Oak-lined boat landing",
+      "attractions": ["Terrace Theater/boat ramp", "Boat landing", "River access"],
+      "scenery": ["River views", "Oak-lined", "Waterfront"],
+      "proximities": {"to_downtown": "15 min", "to_beaches": "10 min"},
+      "typical_amenities": ["Boat Access / Dock", "Marsh Views / Waterfront", "Mature Live Oaks / Oak-Lined"],
+      "vocabulary": {
+        "style": "Island waterfront",
+        "neighborhood_vibe": "oak-lined river living",
+        "proximity_terms": ["in Riverland Terrace", "James Island", "oak-lined", "river access"]
+      },
+      "landmarks": ["Terrace Theater", "Riverland boat landing"],
+      "selling_points": ["Boat access", "River views", "Oak-lined", "Island living"]
+    },
+    {
+      "name": "Park Circle",
+      "aliases": ["Park Circle North Charleston"],
+      "bounds": {"north": 32.8800, "south": 32.8500, "east": -79.9500, "west": -80.0000},
+      "zip_codes": ["29405"],
+      "description": "Revitalized North Charleston neighborhood with hip walkability, breweries, and urban park setting.",
+      "vibes": "Revitalized hip walkability",
+      "attractions": ["Breweries/playground", "Restaurants", "Parks", "Entertainment"],
+      "scenery": ["Urban park", "Revitalized", "Hip"],
+      "proximities": {"to_downtown": "15 min", "to_airport": "10 min"},
+      "typical_amenities": ["Walkable to King Street / Downtown", "Renovated Kitchen", "Hardwood Floors"],
+      "vocabulary": {
+        "style": "Revitalized urban",
+        "neighborhood_vibe": "hip and walkable",
+        "proximity_terms": ["in Park Circle", "revitalized North Charleston", "hip walkability"]
+      },
+      "landmarks": ["Park Circle", "Breweries", "Park Circle Playground"],
+      "selling_points": ["Revitalized", "Breweries", "Walkable", "Affordable"]
+    },
+    {
+      "name": "Sullivan's Island",
+      "aliases": ["Sullivans Island", "Sullivan Island"],
+      "bounds": {"north": 32.7700, "south": 32.7500, "east": -79.8500, "west": -79.9000},
+      "zip_codes": ["29482"],
+      "description": "Relaxed beach island with historic Fort Moultrie, pristine beaches, and laid-back Lowcountry lifestyle.",
+      "vibes": "Relaxed beach historic",
+      "attractions": ["Beaches/Fort Moultrie", "Beach access", "Historic fort", "Restaurants"],
+      "scenery": ["Sandy shores", "Beach", "Island"],
+      "proximities": {"to_downtown": "15-30 min", "to_Mount_Pleasant": "5 min"},
+      "typical_amenities": ["Beach Proximity (<15 min)", "Marsh Views / Waterfront", "Historic Charm / Original Details"],
+      "vocabulary": {
+        "style": "Beach island",
+        "neighborhood_vibe": "relaxed beach living",
+        "proximity_terms": ["on Sullivan's Island", "beach island", "relaxed island lifestyle"]
+      },
+      "landmarks": ["Fort Moultrie", "Sullivan's Island Beach", "The Obstinate Daughter"],
+      "selling_points": ["Beach access", "Historic character", "Island lifestyle", "Relaxed atmosphere"]
+    },
+    {
+      "name": "Isle of Palms",
+      "aliases": ["IOP", "Isle of Palms Beach"],
+      "bounds": {"north": 32.8000, "south": 32.7700, "east": -79.7500, "west": -79.8500},
+      "zip_codes": ["29451"],
+      "description": "Resort oceanfront island with Wild Dunes, pristine beaches, and luxury vacation living.",
+      "vibes": "Resort oceanfront",
+      "attractions": ["Wild Dunes", "Beach", "Resort amenities", "Golf"],
+      "scenery": ["Dunes", "Oceanfront", "Resort"],
+      "proximities": {"to_downtown": "20-30 min", "to_Mount_Pleasant": "10 min"},
+      "typical_amenities": ["Beach Proximity (<15 min)", "Golf Course Access / Community", "Luxury Finishes", "Private Pool"],
+      "vocabulary": {
+        "style": "Resort oceanfront",
+        "neighborhood_vibe": "resort island living",
+        "proximity_terms": ["on Isle of Palms", "oceanfront", "Wild Dunes resort", "beach resort living"]
+      },
+      "landmarks": ["Wild Dunes Resort", "Isle of Palms Beach", "Front Beach"],
+      "selling_points": ["Oceanfront", "Wild Dunes resort", "Beach access", "Resort amenities"]
+    },
+    {
+      "name": "Daniel Island",
+      "aliases": ["DI"],
+      "bounds": {"north": 32.8750, "south": 32.8350, "east": -79.8850, "west": -79.9150},
+      "zip_codes": ["29492"],
+      "description": "Master-planned community offering Charleston's newest urban lifestyle with golf courses, parks, top schools, and modern amenities.",
+      "vibes": "Planned waterfront trails",
+      "attractions": ["Golf/parks", "Volvo Car Stadium", "Town center", "Parks"],
+      "scenery": ["Waterfront", "Modern", "Planned"],
+      "proximities": {"to_downtown": "20 min", "to_beaches": "25 min"},
+      "typical_amenities": ["Master-Planned Amenities", "Golf Course Access / Community", "Top-Rated Schools Nearby", "Private Pool"],
+      "vocabulary": {
+        "style": "New Urbanist",
+        "neighborhood_vibe": "modern master-planned living",
+        "proximity_terms": ["within Daniel Island's award-winning community", "minutes from downtown Charleston", "near I-526", "walkable to town center"]
+      },
+      "landmarks": ["Daniel Island Club", "Etiwan Park", "Volvo Car Stadium", "Daniel Island Town Center"],
+      "selling_points": ["Master-planned community design", "Two championship golf courses", "New construction and modern homes", "Family-oriented with excellent schools"]
+    },
+    {
+      "name": "Kiawah Island",
+      "aliases": ["Kiawah"],
+      "bounds": {"north": 32.6300, "south": 32.5900, "east": -80.0500, "west": -80.1500},
+      "zip_codes": ["29455"],
+      "description": "World-renowned resort island with championship golf, pristine beaches, and luxury real estate in a gated community setting.",
+      "vibes": "Gated luxury resort",
+      "attractions": ["Golf/Beachwalker", "Championship golf", "Beach", "Resort"],
+      "scenery": ["Dunes", "Beach", "Golf course", "Luxury"],
+      "proximities": {"to_downtown": "45 min", "to_Johns_Island": "15 min"},
+      "typical_amenities": ["Golf Course Access / Community", "Beach Proximity (<15 min)", "Luxury Finishes", "Private Pool", "Master-Planned Amenities"],
+      "vocabulary": {
+        "style": "Luxury resort living",
+        "neighborhood_vibe": "world-class island resort community",
+        "proximity_terms": ["on prestigious Kiawah Island", "resort amenities", "championship golf", "private beach access"]
+      },
+      "landmarks": ["Ocean Course", "Kiawah Island Golf Resort", "Freshfields Village", "Night Heron Park"],
+      "selling_points": ["Five championship golf courses", "10 miles of pristine beach", "World-class resort amenities", "Luxury gated community"]
+    }
+  ],
+  "general_charleston_terms": {
+    "lowcountry": "The coastal region of South Carolina including Charleston",
+    "holy_city": "Charleston's historic nickname",
+    "piazza": "Charleston-style side porch with columns",
+    "charleston_single": "Narrow historic home turned perpendicular to street with side piazza",
+    "sweetgrass": "Native grass used in traditional Charleston basket weaving",
+    "pluff_mud": "Distinctive marsh mud at low tide with characteristic smell",
+    "battery": "Historic seawall and promenade along Charleston Harbor"
+  }
+}
+

@@ -1,0 +1,332 @@
+{
+  "neighborhoods": [
+    {
+      "name": "Downtown Charleston",
+      "aliases": ["Peninsula", "Historic District", "Downtown", "South of Broad"],
+      "bounds": {
+        "north": 32.7916,
+        "south": 32.7616,
+        "east": -79.9250,
+        "west": -79.9450
+      },
+      "zip_codes": ["29401", "29403"],
+      "description": "The heart of Charleston's historic charm with cobblestone streets, antebellum architecture, and walkable access to world-class dining and shopping.",
+      "typical_amenities": [
+        "Historic Charm / Original Details",
+        "Piazza or Porch",
+        "Hardwood Floors",
+        "Walkable to King Street / Downtown"
+      ],
+      "vocabulary": {
+        "porch": "piazza",
+        "balcony": "piazza",
+        "style": "Charleston Single",
+        "neighborhood_vibe": "historic elegance meets modern luxury",
+        "proximity_terms": ["steps from King Street", "in the heart of the Peninsula", "walking distance to Waterfront Park", "blocks from Rainbow Row"]
+      },
+      "landmarks": [
+        "King Street",
+        "Waterfront Park",
+        "Rainbow Row",
+        "The Battery",
+        "Marion Square",
+        "Charleston City Market"
+      ],
+      "selling_points": [
+        "Unparalleled walkability",
+        "World-class dining and shopping",
+        "Rich history and architecture",
+        "Vibrant cultural scene"
+      ]
+    },
+    {
+      "name": "Mount Pleasant",
+      "aliases": ["Mt Pleasant", "Mt. Pleasant", "East Cooper"],
+      "bounds": {
+        "north": 32.8540,
+        "south": 32.7540,
+        "east": -79.7750,
+        "west": -79.8650
+      },
+      "zip_codes": ["29464", "29466"],
+      "description": "Family-friendly East Cooper community known for top-rated schools, waterfront living, and quick access to beaches and downtown Charleston.",
+      "typical_amenities": [
+        "Top-Rated Schools Nearby",
+        "Marsh Views / Waterfront",
+        "Boat Access / Dock",
+        "Renovated Kitchen",
+        "Fenced Yard"
+      ],
+      "vocabulary": {
+        "style": "Lowcountry coastal",
+        "neighborhood_vibe": "family-friendly waterfront living",
+        "proximity_terms": ["minutes from Isle of Palms", "easy access to downtown Charleston", "near Shem Creek", "close to Patriots Point"]
+      },
+      "landmarks": [
+        "Shem Creek",
+        "Patriots Point",
+        "Town Centre",
+        "Coleman Boulevard",
+        "Mount Pleasant Pier"
+      ],
+      "selling_points": [
+        "Award-winning schools",
+        "Waterfront dining at Shem Creek",
+        "Beach access to IOP and Sullivan's Island",
+        "Strong community feel"
+      ]
+    },
+    {
+      "name": "Daniel Island",
+      "aliases": ["DI"],
+      "bounds": {
+        "north": 32.8750,
+        "south": 32.8350,
+        "east": -79.8850,
+        "west": -79.9150
+      },
+      "zip_codes": ["29492"],
+      "description": "Master-planned community offering Charleston's newest urban lifestyle with golf courses, parks, top schools, and modern amenities.",
+      "typical_amenities": [
+        "Master-Planned Amenities",
+        "Golf Course Access / Community",
+        "Top-Rated Schools Nearby",
+        "Private Pool",
+        "Move-In Ready"
+      ],
+      "vocabulary": {
+        "style": "New Urbanist",
+        "neighborhood_vibe": "modern master-planned living",
+        "proximity_terms": ["within Daniel Island's award-winning community", "minutes from downtown Charleston", "near I-526", "walkable to town center"]
+      },
+      "landmarks": [
+        "Daniel Island Club",
+        "Etiwan Park",
+        "Volvo Car Stadium",
+        "Daniel Island Town Center"
+      ],
+      "selling_points": [
+        "Master-planned community design",
+        "Two championship golf courses",
+        "New construction and modern homes",
+        "Family-oriented with excellent schools"
+      ]
+    },
+    {
+      "name": "West Ashley",
+      "aliases": ["Avondale", "Riverland Terrace", "Wappoo"],
+      "bounds": {
+        "north": 32.8000,
+        "south": 32.7000,
+        "east": -79.9550,
+        "west": -80.0550
+      },
+      "zip_codes": ["29407", "29414"],
+      "description": "Established neighborhoods west of the Ashley River offering mature live oaks, convenient location, and suburban charm with urban accessibility.",
+      "typical_amenities": [
+        "Mature Live Oaks / Oak-Lined",
+        "Hardwood Floors",
+        "Fenced Yard",
+        "Renovated Kitchen"
+      ],
+      "vocabulary": {
+        "style": "classic Charleston suburban",
+        "neighborhood_vibe": "established charm with convenient access",
+        "proximity_terms": ["west of the Ashley River", "minutes from downtown", "near Avondale shopping", "easy access to beaches and downtown"]
+      },
+      "landmarks": [
+        "Avondale",
+        "Charles Towne Landing",
+        "West Ashley Greenway",
+        "Citadel Mall area"
+      ],
+      "selling_points": [
+        "Mature landscaping with live oaks",
+        "Central location between beaches and downtown",
+        "Established neighborhoods with character",
+        "More affordable than downtown"
+      ]
+    },
+    {
+      "name": "James Island",
+      "aliases": ["JI"],
+      "bounds": {
+        "north": 32.7400,
+        "south": 32.6900,
+        "east": -79.9000,
+        "west": -80.0000
+      },
+      "zip_codes": ["29412"],
+      "description": "Island community between Charleston and Folly Beach offering marsh views, beach access, and a relaxed Lowcountry lifestyle.",
+      "typical_amenities": [
+        "Marsh Views / Waterfront",
+        "Fenced Yard",
+        "Hardwood Floors",
+        "Beach Proximity (<15 min)"
+      ],
+      "vocabulary": {
+        "style": "island casual",
+        "neighborhood_vibe": "laid-back Lowcountry island life",
+        "proximity_terms": ["minutes from Folly Beach", "short drive to downtown", "near James Island County Park", "island living"]
+      },
+      "landmarks": [
+        "James Island County Park",
+        "Folly Road",
+        "The Dock at Riverwatch"
+      ],
+      "selling_points": [
+        "Close to Folly Beach",
+        "Marsh and water views",
+        "Relaxed island atmosphere",
+        "Strong local community"
+      ]
+    },
+    {
+      "name": "Summerville",
+      "aliases": ["Flowertown"],
+      "bounds": {
+        "north": 33.0500,
+        "south": 32.9800,
+        "east": -80.1400,
+        "west": -80.2200
+      },
+      "zip_codes": ["29483", "29485", "29486"],
+      "description": "Known as 'Flowertown in the Pines,' offering suburban family living with excellent schools, new construction, and a charming historic downtown.",
+      "typical_amenities": [
+        "Top-Rated Schools Nearby",
+        "Move-In Ready",
+        "Fenced Yard",
+        "Community Pool"
+      ],
+      "vocabulary": {
+        "style": "suburban family-friendly",
+        "neighborhood_vibe": "Flowertown's welcoming community",
+        "proximity_terms": ["in the heart of Summerville", "30 minutes from downtown Charleston", "near Azalea Park", "Dorchester County schools"]
+      },
+      "landmarks": [
+        "Azalea Park",
+        "Summerville Downtown",
+        "Nexton",
+        "Pine Forest Country Club"
+      ],
+      "selling_points": [
+        "Acclaimed Dorchester County schools",
+        "More affordable than closer-in areas",
+        "New construction communities",
+        "Small-town charm with big-city access"
+      ]
+    },
+    {
+      "name": "Johns Island",
+      "aliases": ["John's Island"],
+      "bounds": {
+        "north": 32.7500,
+        "south": 32.6500,
+        "east": -80.0100,
+        "west": -80.1500
+      },
+      "zip_codes": ["29455"],
+      "description": "Rural island community with working farms, marsh views, and growing residential developments offering space and Lowcountry tranquility.",
+      "typical_amenities": [
+        "Marsh Views / Waterfront",
+        "Mature Live Oaks / Oak-Lined",
+        "Fenced Yard"
+      ],
+      "vocabulary": {
+        "style": "rural Lowcountry",
+        "neighborhood_vibe": "peaceful island retreat",
+        "proximity_terms": ["on scenic Johns Island", "near Kiawah and Seabrook", "minutes from Folly Beach", "rural Charleston living"]
+      },
+      "landmarks": [
+        "Angel Oak",
+        "Freshfields Village",
+        "Bohicket Marina"
+      ],
+      "selling_points": [
+        "Close to Kiawah and Seabrook resort islands",
+        "More land and space",
+        "Agricultural heritage",
+        "Growing upscale communities"
+      ]
+    },
+    {
+      "name": "Kiawah Island",
+      "aliases": ["Kiawah"],
+      "bounds": {
+        "north": 32.6300,
+        "south": 32.5900,
+        "east": -80.0500,
+        "west": -80.1500
+      },
+      "zip_codes": ["29455"],
+      "description": "World-renowned resort island with championship golf, pristine beaches, and luxury real estate in a gated community setting.",
+      "typical_amenities": [
+        "Golf Course Access / Community",
+        "Beach Proximity (<15 min)",
+        "Luxury Finishes",
+        "Private Pool",
+        "Master-Planned Amenities"
+      ],
+      "vocabulary": {
+        "style": "luxury resort living",
+        "neighborhood_vibe": "world-class island resort community",
+        "proximity_terms": ["on prestigious Kiawah Island", "resort amenities", "championship golf", "private beach access"]
+      },
+      "landmarks": [
+        "Ocean Course",
+        "Kiawah Island Golf Resort",
+        "Freshfields Village",
+        "Night Heron Park"
+      ],
+      "selling_points": [
+        "Five championship golf courses",
+        "10 miles of pristine beach",
+        "World-class resort amenities",
+        "Luxury gated community"
+      ]
+    },
+    {
+      "name": "North Charleston",
+      "aliases": ["NoChA", "Park Circle"],
+      "bounds": {
+        "north": 32.9500,
+        "south": 32.8500,
+        "east": -79.9500,
+        "west": -80.0500
+      },
+      "zip_codes": ["29405", "29406", "29418", "29420"],
+      "description": "Growing urban area with revitalized neighborhoods like Park Circle offering arts, dining, and affordable living close to downtown.",
+      "typical_amenities": [
+        "Renovated Kitchen",
+        "Hardwood Floors",
+        "Fenced Yard"
+      ],
+      "vocabulary": {
+        "style": "urban revitalized",
+        "neighborhood_vibe": "emerging arts and dining scene",
+        "proximity_terms": ["in up-and-coming North Charleston", "near Park Circle", "minutes from downtown Charleston", "convenient to I-26"]
+      },
+      "landmarks": [
+        "Park Circle",
+        "Riverfront Park",
+        "Tanger Outlets",
+        "Boeing facility"
+      ],
+      "selling_points": [
+        "More affordable price point",
+        "Revitalized neighborhoods",
+        "Growing restaurant and arts scene",
+        "Quick access to downtown and airport"
+      ]
+    }
+  ],
+  "general_charleston_terms": {
+    "lowcountry": "The coastal region of South Carolina including Charleston",
+    "holy_city": "Charleston's historic nickname",
+    "piazza": "Charleston-style side porch with columns",
+    "charleston_single": "Narrow historic home turned perpendicular to street with side piazza",
+    "sweetgrass": "Native grass used in traditional Charleston basket weaving",
+    "pluff_mud": "Distinctive marsh mud at low tide with characteristic smell",
+    "battery": "Historic seawall and promenade along Charleston Harbor"
+  }
+}

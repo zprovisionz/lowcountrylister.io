@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/process-staging-queue",
+      "schedule": "*/1 * * * *"
+    },
+    {
+      "path": "/api/reset-monthly-quotas",
+      "schedule": "0 0 1 * *"
+    }
+  ]
+}
