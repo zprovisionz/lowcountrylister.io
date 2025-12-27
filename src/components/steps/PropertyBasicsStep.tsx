@@ -103,11 +103,13 @@ export default function PropertyBasicsStep({
                   key={type.id}
                   type="button"
                   onClick={() => onPropertyTypeChange(type.id)}
-                  className={`relative p-4 rounded-xl border-2 transition-all duration-200 text-center group ${
+                  className={`relative p-4 rounded-xl border-2 transition-all duration-200 text-center group focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
                     isSelected
                       ? 'border-blue-500 bg-blue-500/20 shadow-lg shadow-blue-500/10'
                       : 'border-gray-700 hover:border-gray-600 hover:bg-gray-800/50'
                   }`}
+                  aria-label={`Select ${type.label} property type`}
+                  aria-pressed={isSelected}
                 >
                   <div
                     className={`w-10 h-10 mx-auto rounded-lg flex items-center justify-center mb-2 transition-colors ${

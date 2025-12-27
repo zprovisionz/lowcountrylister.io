@@ -73,3 +73,4 @@ After redeploying:
 - **Fix:** Ensure variables start with `VITE_` prefix
 - **Fix:** Redeploy after adding variables
 
+

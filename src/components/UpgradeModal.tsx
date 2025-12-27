@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from 'react';
 import { X, Check } from 'lucide-react';
 
 interface UpgradeModalProps {
@@ -36,17 +37,61 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
     },
   ];
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      onClose();
+    }
+  };
+
+  // Trap focus within modal
+  const handleModalKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Tab') {
+      const modal = e.currentTarget;
+      const focusableElements = modal.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      const firstElement = focusableElements[0] as HTMLElement;
+      const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
+
+      if (e.shiftKey) {
+        if (document.activeElement === firstElement) {
+          e.preventDefault();
+          lastElement?.focus();
+        }
+      } else {
+        if (document.activeElement === lastElement) {
+          e.preventDefault();
+          firstElement?.focus();
+        }
+      }
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-gray-800/95 backdrop-blur-sm border border-gray-700/50 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+    <div
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      onKeyDown={handleKeyDown}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="upgrade-modal-title"
+    >
+      <div
+        ref={modalRef}
+        className="bg-gray-800/95 backdrop-blur-sm border border-gray-700/50 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+        onKeyDown={handleModalKeyDown}
+        tabIndex={-1}
+      >
         <div className="sticky top-0 bg-gray-800/95 backdrop-blur-sm border-b border-gray-700/50 p-6 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-white">Upgrade Your Plan</h2>
+          <h2 id="upgrade-modal-title" className="text-2xl font-bold text-white">Upgrade Your Plan</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-700 rounded-lg transition"
-            aria-label="Close modal"
+            className="p-2 hover:bg-gray-700 rounded-lg transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800"
+            aria-label="Close upgrade modal"
           >
-            <X className="w-6 h-6 text-gray-400" />
+            <X className="w-6 h-6 text-gray-400" aria-hidden="true" />
           </button>
         </div>
 
@@ -91,11 +136,17 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
                 </ul>
 
                 <button
-                  className={`w-full py-3 rounded-lg font-semibold transition ${
+                  className={`w-full py-3 rounded-lg font-semibold transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800 ${
                     plan.popular
                       ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg'
                       : 'bg-gray-600 text-white hover:bg-gray-500'
                   }`}
+                  onClick={() => {
+                    window.history.pushState({}, '', '/pricing');
+                    window.dispatchEvent(new PopStateEvent('popstate'));
+                    onClose();
+                  }}
+                  aria-label={`Upgrade to ${plan.name} plan`}
                 >
                   Get Started
                 </button>

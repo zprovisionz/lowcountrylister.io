@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, Generation } from '../lib/supabase';
-import { Waves, LogOut, FileText, Calendar, MapPin, Loader2, Plus, Settings, CreditCard, X, Copy, Check } from 'lucide-react';
+import { Waves, LogOut, FileText, Calendar, MapPin, Plus, Settings, CreditCard, X, Copy, Check } from 'lucide-react';
 import { NotificationContainer, NotificationType } from '../components/Notification';
 import { logger } from '../lib/logger';
+import { SkeletonList } from '../components/ui/Skeleton';
 
 export default function Dashboard() {
   const { user, profile, signOut } = useAuth();
@@ -12,12 +13,20 @@ export default function Dashboard() {
   const [showMenu, setShowMenu] = useState(false);
   const [selectedGeneration, setSelectedGeneration] = useState<Generation | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<Array<{
+    id: string;
+    message: string;
+    type?: NotificationType;
+    duration?: number;
+  }>>([]);
   
   const showNotification = (message: string, type: NotificationType = 'info', duration = 5000) => {
-    const event = new CustomEvent('showNotification', {
-      detail: { message, type, duration },
-    });
-    window.dispatchEvent(event);
+    const id = Date.now().toString();
+    setNotifications(prev => [...prev, { id, message, type, duration }]);
+  };
+
+  const removeNotification = (id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
   useEffect(() => {
@@ -40,6 +49,10 @@ export default function Dashboard() {
       setGenerations(data || []);
     } catch (error) {
       logger.error('Error fetching generations:', error);
+      showNotification(
+        'Failed to load your generations. Please refresh the page.',
+        'error'
+      );
     } finally {
       setLoading(false);
     }
@@ -77,7 +90,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white relative">
-      <NotificationContainer />
+      <NotificationContainer notifications={notifications} onRemove={removeNotification} />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/20 via-gray-900 to-gray-900"></div>
       <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-blue-500/10 to-transparent"></div>
       <div className="absolute bottom-0 left-0 right-0 h-2 bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-500"></div>
@@ -89,9 +102,10 @@ export default function Dashboard() {
               window.history.pushState({}, '', '/');
               window.dispatchEvent(new PopStateEvent('popstate'));
             }}
-            className="flex items-center gap-3 hover:opacity-80 transition"
+            className="flex items-center gap-3 hover:opacity-80 transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 rounded-lg px-2 py-1"
+            aria-label="Go to home page"
           >
-            <Waves className="w-8 h-8 text-blue-400" />
+            <Waves className="w-8 h-8 text-blue-400" aria-hidden="true" />
             <div>
               <h1 className="text-xl font-bold text-white">Lowcountry Listings AI</h1>
               <p className="text-xs text-gray-400 hidden sm:block">Generation History</p>
@@ -101,16 +115,23 @@ export default function Dashboard() {
           <div className="relative">
             <button
               onClick={() => setShowMenu(!showMenu)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-800/50 transition"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-800/50 transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+              aria-label="User menu"
+              aria-expanded={showMenu}
+              aria-haspopup="true"
             >
-              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm" aria-hidden="true">
                 {profile?.email.charAt(0).toUpperCase()}
               </div>
               <span className="text-sm text-gray-300 hidden sm:block">{profile?.email}</span>
             </button>
 
             {showMenu && (
-              <div className="absolute right-0 mt-2 w-56 bg-gray-800/95 backdrop-blur-sm rounded-lg shadow-xl border border-gray-700/50 py-2">
+              <div 
+                className="absolute right-0 mt-2 w-56 bg-gray-800/95 backdrop-blur-sm rounded-lg shadow-xl border border-gray-700/50 py-2 z-50"
+                role="menu"
+                aria-orientation="vertical"
+              >
                 <div className="px-4 py-2 border-b border-gray-700/50">
                   <p className="text-xs text-gray-400">Plan</p>
                   <p className="font-semibold text-white capitalize">
@@ -125,9 +146,11 @@ export default function Dashboard() {
                     window.history.pushState({}, '', '/');
                     setShowMenu(false);
                   }}
-                  className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-700/50 text-gray-300 transition text-left"
+                  className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-700/50 text-gray-300 transition text-left focus:outline-none focus:bg-gray-700/50"
+                  role="menuitem"
+                  aria-label="Create new generation"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-4 h-4" aria-hidden="true" />
                   New Generation
                 </button>
                 <button
@@ -136,9 +159,11 @@ export default function Dashboard() {
                     window.dispatchEvent(new PopStateEvent('popstate'));
                     setShowMenu(false);
                   }}
-                  className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-700/50 text-gray-300 transition text-left"
+                  className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-700/50 text-gray-300 transition text-left focus:outline-none focus:bg-gray-700/50"
+                  role="menuitem"
+                  aria-label="Go to account settings"
                 >
-                  <Settings className="w-4 h-4" />
+                  <Settings className="w-4 h-4" aria-hidden="true" />
                   Account Settings
                 </button>
                 <button
@@ -147,16 +172,20 @@ export default function Dashboard() {
                     window.dispatchEvent(new PopStateEvent('popstate'));
                     setShowMenu(false);
                   }}
-                  className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-700/50 text-gray-300 transition text-left"
+                  className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-700/50 text-gray-300 transition text-left focus:outline-none focus:bg-gray-700/50"
+                  role="menuitem"
+                  aria-label="View pricing plans"
                 >
-                  <CreditCard className="w-4 h-4" />
+                  <CreditCard className="w-4 h-4" aria-hidden="true" />
                   Pricing
                 </button>
                 <button
                   onClick={handleSignOut}
-                  className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-700/50 text-red-400 transition text-left"
+                  className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-700/50 text-red-400 transition text-left focus:outline-none focus:bg-gray-700/50"
+                  role="menuitem"
+                  aria-label="Sign out"
                 >
-                  <LogOut className="w-4 h-4" />
+                  <LogOut className="w-4 h-4" aria-hidden="true" />
                   Logout
                 </button>
               </div>
@@ -165,7 +194,7 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-8 md:py-12 relative z-10">
+      <main id="main-content" className="max-w-6xl mx-auto px-4 py-8 md:py-12 relative z-10" tabIndex={-1}>
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-white mb-2">Your Listing History</h2>
           <p className="text-gray-300">
@@ -174,9 +203,7 @@ export default function Dashboard() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
-          </div>
+          <SkeletonList count={3} />
         ) : generations.length === 0 ? (
           <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-2xl border border-gray-700/50 p-12 text-center">
             <FileText className="w-16 h-16 text-gray-600 mx-auto mb-4" />

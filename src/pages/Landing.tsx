@@ -1,16 +1,159 @@
 import { useState } from 'react';
-import { Waves, ArrowRight, Sparkles, MapPin, FileText, Image, Clock, Zap, Check, Crown, Star, Users } from 'lucide-react';
+import { Waves, ArrowRight, Sparkles, MapPin, FileText, Image, Clock, Zap, Check, Crown, Star, Users, Loader2, Settings } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import AddressAutocompleteInput from '../components/AddressAutocompleteInput';
+import ResultsDisplay from '../components/ResultsDisplay';
+import GenerationProgress from '../components/GenerationProgress';
+import Alert from '../components/ui/Alert';
+import Button from '../components/ui/Button';
+import { supabase } from '../lib/supabase';
+import { apiCall, parseApiError, AppError } from '../lib/errorHandler';
+import { neighborhoodService } from '../services/neighborhoodService';
 
 export default function Landing() {
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const [address, setAddress] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const [results, setResults] = useState<{
+    mls: string;
+    airbnb?: string;
+    social?: string[];
+    confidence: 'high' | 'medium';
+    generationId?: string;
+    authenticity?: {
+      score: 'high' | 'medium' | 'low';
+      suggestions: string[];
+    };
+  } | null>(null);
 
-  const handleGetStarted = () => {
+  const handleGetStarted = async () => {
+    if (!address.trim()) return;
+
+    // If user is not authenticated, redirect to generate page (which will prompt for login)
+    if (!user) {
+      window.history.pushState({ address }, '', '/generate');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+      return;
+    }
+
+    // Check quota for authenticated users
+    const generationsRemaining = profile
+      ? profile.subscription_tier === 'free'
+        ? 3 - profile.generations_this_month
+        : profile.subscription_tier === 'starter'
+        ? 50 - profile.generations_this_month
+        : Infinity
+      : Infinity;
+
+    if (generationsRemaining <= 0) {
+      window.history.pushState({ address }, '', '/generate');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+      return;
+    }
+
+    // Instant generation for authenticated users
+    setGenerating(true);
+    setGenerationError(null);
+    setResults(null);
+
+    try {
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      // Call the API with just address (quick mode - API will auto-populate amenities)
+      const result = await apiCall<{
+        success: boolean;
+        data?: {
+          id: string;
+          mls_description: string;
+          airbnb_description?: string;
+          social_captions?: string[];
+          confidence_level: 'high' | 'medium';
+        };
+        error?: string;
+        code?: string;
+      }>(
+        '/api/generate',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            address: address.trim(),
+            property_type: 'single_family', // Default property type
+            amenities: [], // Empty - API will auto-populate from neighborhood
+            photo_urls: [],
+            include_airbnb: false,
+            include_social: false,
+          }),
+        },
+        2 // 2 retries
+      );
+
+      if (!result.success || !result.data) {
+        throw new Error('Invalid response from server');
+      }
+
+      // Calculate authenticity for display
+      const authenticity = neighborhoodService.calculateCharlestonAuthenticity(result.data.mls_description);
+
+      setResults({
+        mls: result.data.mls_description,
+        airbnb: result.data.airbnb_description || undefined,
+        social: result.data.social_captions || undefined,
+        confidence: result.data.confidence_level || 'medium',
+        generationId: result.data.id,
+        authenticity: {
+          score: authenticity.score,
+          suggestions: authenticity.suggestions,
+        },
+      });
+
+      await refreshProfile();
+
+      // Scroll to results
+      setTimeout(() => {
+        const resultsElement = document.getElementById('generation-results');
+        if (resultsElement) {
+          resultsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    } catch (error) {
+      const parsedError = parseApiError(error);
+      
+      if (error instanceof AppError && error.code === 'QUOTA_EXCEEDED') {
+        setGenerationError('You\'ve reached your monthly generation limit. Please upgrade to continue.');
+        window.history.pushState({ address }, '', '/generate');
+        window.dispatchEvent(new PopStateEvent('popstate'));
+        return;
+      }
+      
+      setGenerationError(parsedError.message || 'Failed to generate listing. Please try again.');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleCustomizeRegenerate = () => {
     if (address.trim()) {
       window.history.pushState({ address }, '', '/generate');
       window.dispatchEvent(new PopStateEvent('popstate'));
+    }
+  };
+
+  const handleSaveToHistory = () => {
+    // Generation is already saved automatically in /api/generate
+    if (user) {
+      window.history.pushState({}, '', '/dashboard');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    } else {
+      handleSignIn();
     }
   };
 
@@ -29,7 +172,14 @@ export default function Landing() {
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
 
-  const currentTier = profile?.subscription_tier || 'free';
+  const handleVirtualStaging = () => {
+    if (user && (profile?.subscription_tier === 'pro' || profile?.subscription_tier === 'pro_plus')) {
+      window.history.pushState({}, '', '/generate?mode=staging');
+    } else {
+      window.history.pushState({}, '', '/pricing');
+    }
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white relative overflow-hidden">
@@ -45,7 +195,7 @@ export default function Landing() {
           </div>
           <nav className="hidden md:flex items-center gap-8 text-sm text-gray-300">
             <a href="#features" className="hover:text-white transition">Features</a>
-            <a href="#staging" className="hover:text-white transition">Virtual Staging</a>
+            <button onClick={handleVirtualStaging} className="hover:text-white transition">Virtual Staging</button>
             <button onClick={handlePricing} className="hover:text-white transition">Pricing</button>
           </nav>
           <div className="flex items-center gap-3">
@@ -70,7 +220,7 @@ export default function Landing() {
         </div>
       </header>
 
-      <main className="relative z-10">
+      <main id="main-content" className="relative z-10" tabIndex={-1}>
         <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-20 pb-12 text-center">
           <div className="mb-6 inline-flex items-center gap-2 px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-full text-blue-300 text-sm font-medium backdrop-blur-sm">
             <Sparkles className="w-4 h-4" />
@@ -99,20 +249,33 @@ export default function Landing() {
                     onChange={setAddress}
                     placeholder="Enter a Charleston address..."
                     autoFocus
-                    inputClassName="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 text-base sm:text-lg focus:ring-0"
+                    inputClassName="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 text-base sm:text-lg focus:ring-0 pl-12"
                     className="flex-1"
                   />
                 </div>
-                <button
+                <Button
                   onClick={handleGetStarted}
-                  disabled={!address.trim()}
-                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition font-semibold flex items-center gap-2 whitespace-nowrap shadow-lg shadow-blue-600/20"
+                  disabled={!address.trim() || generating}
+                  isLoading={generating}
+                  icon={!generating && <ArrowRight className="w-5 h-5" />}
+                  iconPosition="right"
+                  className="whitespace-nowrap shadow-lg shadow-blue-600/20"
+                  aria-label="Generate listing description"
                 >
-                  Generate
-                  <ArrowRight className="w-5 h-5" />
-                </button>
+                  {generating ? 'Generating...' : 'Generate'}
+                </Button>
               </div>
             </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-6">
+            <button
+              onClick={handleVirtualStaging}
+              className="px-6 py-3 bg-amber-600 hover:bg-amber-700 rounded-lg transition font-semibold flex items-center gap-2 shadow-lg shadow-amber-600/20"
+            >
+              <Image className="w-5 h-5" />
+              Try Virtual Staging
+            </button>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-400">
@@ -130,6 +293,85 @@ export default function Landing() {
             </div>
           </div>
         </section>
+
+          {/* Generation Results Section */}
+        {(generating || results || generationError) && (
+          <section id="generation-results" className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            {generating && (
+              <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-2xl border border-gray-700/50 p-12">
+                <div className="text-center mb-8">
+                  <Loader2 className="w-12 h-12 animate-spin text-blue-400 mx-auto mb-4" aria-hidden="true" />
+                  <h3 className="text-xl font-semibold text-white mb-2">Generating your listing description...</h3>
+                  <p className="text-gray-400">Using neighborhood intelligence and Charleston-specific insights</p>
+                </div>
+                <GenerationProgress
+                  currentStep="Generating"
+                  steps={[
+                    { label: 'Analyzing', description: 'Processing address and neighborhood' },
+                    { label: 'Generating', description: 'Creating listing description' },
+                    { label: 'Reviewing', description: 'Quality checking' },
+                  ]}
+                />
+                <div className="mt-8 text-center">
+                  <p className="text-sm text-gray-400">This usually takes 30-60 seconds</p>
+                </div>
+              </div>
+            )}
+
+            {generationError && (
+              <Alert
+                variant="error"
+                title="Generation Failed"
+              >
+                <div className="space-y-4">
+                  <p>{generationError}</p>
+                  <Button
+                    onClick={handleCustomizeRegenerate}
+                    size="sm"
+                  >
+                    Try Advanced Options
+                  </Button>
+                </div>
+              </Alert>
+            )}
+
+            {results && (
+              <div className="space-y-6">
+                <ResultsDisplay
+                  mlsDescription={results.mls}
+                  airbnbDescription={results.airbnb}
+                  socialCaptions={results.social}
+                  confidenceLevel={results.confidence}
+                  onSave={handleSaveToHistory}
+                  authenticity={results.authenticity}
+                  photos={[]}
+                  generationId={results.generationId}
+                  onUpgradeClick={handlePricing}
+                  subscriptionTier={profile?.subscription_tier || 'free'}
+                />
+                
+                <div className="bg-gradient-to-r from-blue-600/20 to-cyan-600/20 backdrop-blur-sm border border-blue-500/20 rounded-2xl p-6">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="text-center sm:text-left">
+                      <h3 className="text-xl font-bold text-white mb-2">Want more control?</h3>
+                      <p className="text-gray-300 text-sm">
+                        Add property details, photos, amenities, and generate Airbnb or social media descriptions
+                      </p>
+                    </div>
+                <Button
+                  onClick={handleCustomizeRegenerate}
+                  icon={<Settings className="w-5 h-5" />}
+                  iconPosition="left"
+                  aria-label="Customize listing and regenerate"
+                >
+                  Customize & Regenerate
+                </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
 
         <section id="features" className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="text-center mb-12">
@@ -489,7 +731,7 @@ export default function Landing() {
             </div>
             <div className="flex gap-8 text-sm text-gray-400">
               <a href="#features" className="hover:text-white transition">Features</a>
-              <a href="#staging" className="hover:text-white transition">Virtual Staging</a>
+              <button onClick={handleVirtualStaging} className="hover:text-white transition">Virtual Staging</button>
               <button onClick={handlePricing} className="hover:text-white transition">Pricing</button>
               <a href="mailto:support@lowcountrylistings.ai" className="hover:text-white transition">Support</a>
             </div>

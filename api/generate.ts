@@ -65,9 +65,22 @@ export default async function handler(
     logger.info('Loading neighborhood data...');
     const neighborhoodData = await findNeighborhood(geocodingData);
 
+    // Quick mode: Auto-populate typical amenities if none provided
+    let finalAmenities = data.amenities || [];
+    if (finalAmenities.length === 0 && neighborhoodData.typical_amenities && neighborhoodData.typical_amenities.length > 0) {
+      logger.info('Quick mode: Auto-populating typical amenities from neighborhood');
+      finalAmenities = neighborhoodData.typical_amenities;
+    }
+
+    // Update data with final amenities for generation
+    const dataWithAmenities = {
+      ...data,
+      amenities: finalAmenities,
+    };
+
     logger.info('Generating listing description...');
     const descriptions = await generateDescriptions(
-      data,
+      dataWithAmenities,
       geocodingData,
       neighborhoodData,
       visionFeatures.features
@@ -76,7 +89,7 @@ export default async function handler(
     // Run fact-check on ALL outputs for 97% accuracy guarantee
     const mlsConfidence = await factCheckDescription(
       descriptions.mls_description,
-      data,
+      dataWithAmenities,
       visionFeatures.features,
       geocodingData
     );
@@ -85,7 +98,7 @@ export default async function handler(
     if (descriptions.airbnb_description) {
       airbnbConfidence = await factCheckDescription(
         descriptions.airbnb_description,
-        data,
+        dataWithAmenities,
         visionFeatures.features,
         geocodingData
       );
@@ -96,7 +109,7 @@ export default async function handler(
     if (descriptions.social_captions && descriptions.social_captions.length > 0) {
       const socialScores = await Promise.all(
         descriptions.social_captions.map((caption: string) =>
-          factCheckDescription(caption, data, visionFeatures.features, geocodingData)
+          factCheckDescription(caption, dataWithAmenities, visionFeatures.features, geocodingData)
         )
       );
       socialConfidence = Math.round(socialScores.reduce((a, b) => a + b, 0) / socialScores.length);
@@ -116,7 +129,7 @@ export default async function handler(
         bathrooms: data.bathrooms,
         square_feet: data.square_feet,
         property_type: data.property_type,
-        amenities: data.amenities,
+        amenities: finalAmenities,
         photo_urls: data.photo_urls,
         include_airbnb: data.include_airbnb,
         include_social: data.include_social,
@@ -395,6 +408,7 @@ async function findNeighborhood(geocodingData: any) {
         neighborhood_vibe: 'Lowcountry living',
         proximity_terms: ['in Charleston'],
       },
+      typical_amenities: [],
     };
   } catch (error) {
     logger.error('Error finding neighborhood:', error);
@@ -413,6 +427,7 @@ async function findNeighborhood(geocodingData: any) {
         neighborhood_vibe: 'Lowcountry living',
         proximity_terms: ['in Charleston'],
       },
+      typical_amenities: [],
     };
   }
 }
@@ -466,6 +481,7 @@ function formatNeighborhoodData(neighborhood: any) {
       proximity_terms: [],
     },
     scenery: neighborhood.scenery || [],
+    typical_amenities: neighborhood.typical_amenities || [],
   };
 }
 

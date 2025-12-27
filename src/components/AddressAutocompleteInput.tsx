@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { MapPin } from 'lucide-react';
-import { filterAddresses } from '../data/sc_addresses';
+import { useGooglePlacesAutocomplete } from '../hooks/useGooglePlacesAutocomplete';
 
 interface AddressAutocompleteInputProps {
   value: string;
@@ -27,7 +27,7 @@ export default function AddressAutocompleteInput({
   autoFocus = false,
   id = "address-input",
 }: AddressAutocompleteInputProps) {
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const suggestions = useGooglePlacesAutocomplete(value);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -60,18 +60,20 @@ export default function AddressAutocompleteInput({
     }
   }, [selectedIndex]);
 
+  // Update showSuggestions when suggestions change
+  useEffect(() => {
+    setShowSuggestions(value.length > 0 && suggestions.length > 0);
+  }, [value, suggestions]);
+
   const handleInputChange = (newValue: string) => {
     onChange(newValue);
-    const filtered = filterAddresses(newValue);
-    setSuggestions(filtered);
-    setShowSuggestions(filtered.length > 0);
+    setShowSuggestions(newValue.length > 0);
     setSelectedIndex(-1);
   };
 
   const handleSelectSuggestion = (suggestion: string) => {
     onChange(suggestion);
     setShowSuggestions(false);
-    setSuggestions([]);
     setSelectedIndex(-1);
     inputRef.current?.blur();
   };
@@ -119,14 +121,18 @@ export default function AddressAutocompleteInput({
   };
 
   const handleInputFocus = () => {
-    const filtered = filterAddresses(value);
-    setSuggestions(filtered);
-    setShowSuggestions(filtered.length > 0);
+    setShowSuggestions(value.length > 0 && suggestions.length > 0);
     onFocus?.();
   };
 
   const handleInputBlur = () => {
-    onBlur?.();
+    // Delay blur handling to allow click events on suggestions to fire first
+    setTimeout(() => {
+      if (!suggestionsRef.current?.contains(document.activeElement)) {
+        setShowSuggestions(false);
+        onBlur?.();
+      }
+    }, 200);
   };
 
   const highlightMatch = (text: string, query: string) => {
@@ -178,14 +184,14 @@ export default function AddressAutocompleteInput({
         />
       </div>
 
-      {showSuggestions && (
+      {showSuggestions && suggestions.length > 0 && (
         <div
           ref={suggestionsRef}
           id={`${id}-suggestions`}
           role="listbox"
           className="absolute top-full left-0 right-0 mt-2 bg-gray-800/95 backdrop-blur-sm border border-gray-700/50 rounded-xl shadow-2xl overflow-hidden z-50 max-h-80 overflow-y-auto animate-fadeIn"
         >
-          {suggestions.length > 0 ? (
+          {(
             <>
               {suggestions.map((suggestion, index) => (
                 <button
@@ -195,7 +201,10 @@ export default function AddressAutocompleteInput({
                   role="option"
                   aria-selected={index === selectedIndex}
                   type="button"
-                  onClick={() => handleSelectSuggestion(suggestion)}
+                  onMouseDown={(e) => {
+                    e.preventDefault(); // Prevent input blur
+                    handleSelectSuggestion(suggestion);
+                  }}
                   onMouseEnter={() => setSelectedIndex(index)}
                   className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-colors touch-manipulation min-h-[44px] ${
                     index === selectedIndex
@@ -214,7 +223,7 @@ export default function AddressAutocompleteInput({
                 found
               </div>
             </>
-          ) : null}
+          )}
         </div>
       )}
     </div>

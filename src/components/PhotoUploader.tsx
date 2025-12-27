@@ -80,7 +80,8 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Phot
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={photos.length >= maxPhotos}
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+          aria-label={`Choose photos to upload. ${photos.length} of ${maxPhotos} photos selected.`}
         >
           Choose Files
         </button>
@@ -100,10 +101,10 @@ export default function PhotoUploader({ photos, onChange, maxPhotos = 10 }: Phot
               <button
                 type="button"
                 onClick={() => removePhoto(index)}
-                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition shadow-lg"
-                title="Remove photo"
+                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition shadow-lg focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+                aria-label={`Remove photo ${index + 1}`}
               >
-                <X className="w-4 h-4" />
+                <X className="w-4 h-4" aria-hidden="true" />
               </button>
               <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
                 {index + 1}

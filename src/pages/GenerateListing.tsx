@@ -6,7 +6,6 @@ import {
   Waves,
   LogOut,
   LayoutDashboard,
-  Loader2,
   AlertCircle,
   Home,
   Camera,
@@ -24,7 +23,9 @@ import PhotosStep from '../components/steps/PhotosStep';
 import AmenitiesSelector, { idToLabel } from '../components/AmenitiesSelector';
 import ReviewStep from '../components/steps/ReviewStep';
 import { NotificationContainer, NotificationType } from '../components/Notification';
-import { neighborhoodService, Neighborhood, NeighborhoodDetectionResult } from '../services/neighborhoodService';
+import Alert from '../components/ui/Alert';
+import Button from '../components/ui/Button';
+import { neighborhoodService, NeighborhoodDetectionResult } from '../services/neighborhoodService';
 import { mapPropertyTypeToAPI } from '../lib/propertyTypes';
 import { logger } from '../lib/logger';
 
@@ -562,7 +563,13 @@ export default function GenerateListing() {
               neighborhoodName={detectedNeighborhood?.neighborhood?.name}
               propertyType={propertyType}
               onApplyDefaults={applyNeighborhoodDefaults}
-              userPlan={profile?.subscription_tier || 'free'}
+              userPlan={
+                profile?.subscription_tier === "starter"
+                  ? "free"
+                  : profile?.subscription_tier === "pro" || profile?.subscription_tier === "pro_plus"
+                  ? "pro"
+                  : "free"
+              }
             />
             {(selectedAmenities.length === 0 && customAmenities.length === 0) && (
               <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 flex items-start gap-3">
@@ -687,64 +694,64 @@ export default function GenerateListing() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-8 md:py-12 relative z-10">
+      <main id="main-content" className="max-w-4xl mx-auto px-4 py-8 md:py-12 relative z-10" tabIndex={-1}>
         {showWarning && (
-          <div className="mb-6 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 flex items-start gap-3 backdrop-blur-sm">
-            <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="font-semibold text-yellow-300">
-                {generationsRemaining} generation{generationsRemaining !== 1 ? 's' : ''} left this month
-              </p>
-              <p className="text-yellow-300/70 text-sm mt-1">
-                You've used {profile?.generations_this_month} of 3 free generations this month.
-              </p>
-              <button
-                onClick={() => setShowUpgradeModal(true)}
-                className="text-yellow-400 hover:text-yellow-300 font-medium text-sm underline mt-2"
-              >
-                Upgrade for unlimited generations →
-              </button>
-            </div>
+          <div className="mb-6">
+            <Alert variant="warning">
+              <div>
+                <p className="font-semibold mb-1">
+                  {generationsRemaining} generation{generationsRemaining !== 1 ? 's' : ''} left this month
+                </p>
+                <p className="text-sm mb-2">
+                  You've used {profile?.generations_this_month} of 3 free generations this month.
+                </p>
+                <button
+                  onClick={() => setShowUpgradeModal(true)}
+                  className="text-sm font-medium underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:ring-offset-transparent rounded px-1"
+                >
+                  Upgrade for unlimited generations →
+                </button>
+              </div>
+            </Alert>
           </div>
         )}
         
         {showStarterWarning && (
-          <div className="mb-6 bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 flex items-start gap-3 backdrop-blur-sm">
-            <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="font-semibold text-amber-300">
-                Approaching monthly limit: {generationsRemaining} generations remaining
-              </p>
-              <p className="text-amber-300/70 text-sm mt-1">
-                You've used {profile?.generations_this_month} of 50 Starter plan generations.
-              </p>
-              <button
-                onClick={() => setShowUpgradeModal(true)}
-                className="text-amber-400 hover:text-amber-300 font-medium text-sm underline mt-2"
-              >
-                Upgrade to Pro for unlimited →
-              </button>
-            </div>
+          <div className="mb-6">
+            <Alert variant="warning">
+              <div>
+                <p className="font-semibold mb-1">
+                  Approaching monthly limit: {generationsRemaining} generations remaining
+                </p>
+                <p className="text-sm mb-2">
+                  You've used {profile?.generations_this_month} of 50 Starter plan generations.
+                </p>
+                <button
+                  onClick={() => setShowUpgradeModal(true)}
+                  className="text-sm font-medium underline hover:no-underline focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 focus:ring-offset-transparent rounded px-1"
+                >
+                  Upgrade to Pro for unlimited →
+                </button>
+              </div>
+            </Alert>
           </div>
         )}
         
         {!canGenerate && user && (
-          <div className="mb-6 bg-red-500/10 border border-red-500/20 rounded-lg p-4 flex items-start gap-3 backdrop-blur-sm">
-            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="font-semibold text-red-300">
-                Monthly generation limit reached
-              </p>
-              <p className="text-red-300/70 text-sm mt-1">
-                You've used all {profile?.subscription_tier === 'free' ? '3' : '50'} of your monthly generations.
-              </p>
-              <button
-                onClick={() => setShowUpgradeModal(true)}
-                className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium"
-              >
-                Upgrade to Continue Generating
-              </button>
-            </div>
+          <div className="mb-6">
+            <Alert variant="error" title="Monthly generation limit reached">
+              <div>
+                <p className="mb-3">
+                  You've used all {profile?.subscription_tier === 'free' ? '3' : '50'} of your monthly generations.
+                </p>
+                <button
+                  onClick={() => setShowUpgradeModal(true)}
+                  className="mt-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-transparent"
+                >
+                  Upgrade to Continue Generating
+                </button>
+              </div>
+            </Alert>
           </div>
         )}
 
@@ -763,50 +770,41 @@ export default function GenerateListing() {
             </div>
 
             <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-700/50">
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={goToPreviousStep}
                 disabled={currentStep === 0}
-                className={`inline-flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition ${
-                  currentStep === 0
-                    ? 'text-gray-600 cursor-not-allowed'
-                    : 'text-gray-300 hover:text-white hover:bg-gray-700/50'
-                }`}
+                icon={<ArrowLeft className="w-5 h-5" />}
+                iconPosition="left"
+                aria-label="Go to previous step"
               >
-                <ArrowLeft className="w-5 h-5" />
                 Back
-              </button>
+              </Button>
 
               {currentStep < STEPS.length - 1 ? (
-                <button
+                <Button
                   type="button"
                   onClick={goToNextStep}
                   disabled={!canProceedToNext()}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20"
+                  icon={<ArrowRight className="w-5 h-5" />}
+                  iconPosition="right"
+                  aria-label="Continue to next step"
                 >
                   Continue
-                  <ArrowRight className="w-5 h-5" />
-                </button>
+                </Button>
               ) : (
-                <button
+                <Button
                   type="submit"
                   disabled={generating || !canGenerate || !address.trim()}
-                  className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-cyan-700 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20"
+                  isLoading={generating}
+                  icon={!generating && <Sparkles className="w-5 h-5" />}
+                  iconPosition="left"
+                  className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+                  aria-label={generating ? 'Generating listing descriptions' : 'Generate listing descriptions'}
                 >
-                  {generating ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      Generating...
-                    </>
-                  ) : !canGenerate ? (
-                    'Upgrade to Generate'
-                  ) : (
-                    <>
-                      <Sparkles className="w-5 h-5" />
-                      Generate Descriptions
-                    </>
-                  )}
-                </button>
+                  {generating ? 'Generating...' : !canGenerate ? 'Upgrade to Generate' : 'Generate Descriptions'}
+                </Button>
               )}
             </div>
           </div>
@@ -892,135 +890,4 @@ export default function GenerateListing() {
       )}
     </div>
   );
-}
-
-function generateMLSDescription(data: {
-  address: string;
-  bedrooms?: number;
-  bathrooms?: number;
-  squareFeet?: number;
-  propertyType: string;
-  amenities: string[];
-  neighborhood: Neighborhood | null;
-}): string {
-  const parts = [];
-
-  if (data.neighborhood) {
-    const proximityTerm = data.neighborhood.vocabulary.proximity_terms[0] || 'in Charleston';
-    parts.push(
-      `Discover exceptional Lowcountry living at ${data.address}, ${proximityTerm}. This ${data.propertyType.toLowerCase()} embodies ${data.neighborhood.vocabulary.neighborhood_vibe} with ${data.neighborhood.vocabulary.style} design.`
-    );
-  } else {
-    parts.push(
-      `Discover Charleston living at its finest at ${data.address}. This ${data.propertyType.toLowerCase()} offers the perfect blend of Lowcountry charm and modern convenience.`
-    );
-  }
-
-  if (data.bedrooms || data.bathrooms || data.squareFeet) {
-    const specs = [];
-    if (data.bedrooms) specs.push(`${data.bedrooms} bedroom${data.bedrooms > 1 ? 's' : ''}`);
-    if (data.bathrooms) specs.push(`${data.bathrooms} bath${data.bathrooms > 1 ? 's' : ''}`);
-    if (data.squareFeet) specs.push(`${data.squareFeet.toLocaleString()} sq ft`);
-    parts.push(`Featuring ${specs.join(', ')}, this property is designed for comfortable living.`);
-  }
-
-  if (data.amenities.length > 0) {
-    const amenitiesDisplay = data.amenities.slice(0, 5).map((a) => {
-      if (a.toLowerCase().includes('porch') && data.neighborhood?.name === 'Downtown Charleston') {
-        return 'charming piazza';
-      }
-      return a.toLowerCase();
-    });
-    parts.push(
-      `Highlights include ${amenitiesDisplay.join(', ')}${
-        data.amenities.length > 5 ? ', and more' : ''
-      }.`
-    );
-  }
-
-  if (data.neighborhood) {
-    const sellingPoint = data.neighborhood.selling_points[0];
-    parts.push(`${sellingPoint} in this highly sought-after neighborhood.`);
-
-    if (data.neighborhood.landmarks.length > 0) {
-      const landmark = data.neighborhood.landmarks[0];
-      parts.push(`Conveniently located near ${landmark}.`);
-    }
-  } else {
-    parts.push(
-      `Ideally located in the heart of the Charleston area, you'll enjoy easy access to world-class dining, historic attractions, pristine beaches, and the vibrant culture that makes the Lowcountry so special.`
-    );
-  }
-
-  parts.push(`Don't miss this opportunity to own a piece of Charleston paradise!`);
-
-  return parts.join(' ');
-}
-
-function generateAirbnbDescription(data: {
-  address: string;
-  bedrooms?: number;
-  bathrooms?: number;
-  amenities: string[];
-  neighborhood: Neighborhood | null;
-}): string {
-  const parts = [];
-
-  if (data.neighborhood) {
-    parts.push(
-      `Welcome to your Charleston getaway in beautiful ${data.neighborhood.name}! This charming property is perfectly positioned to help you experience all that the Holy City has to offer.`
-    );
-  } else {
-    parts.push(
-      `Welcome to your Charleston getaway! This charming property is perfectly positioned to help you experience all that the Holy City has to offer.`
-    );
-  }
-
-  if (data.bedrooms || data.bathrooms) {
-    const specs = [];
-    if (data.bedrooms) specs.push(`${data.bedrooms} bedroom${data.bedrooms > 1 ? 's' : ''}`);
-    if (data.bathrooms) specs.push(`${data.bathrooms} bath${data.bathrooms > 1 ? 's' : ''}`);
-    parts.push(`With ${specs.join(' and ')}, our home comfortably accommodates your group.`);
-  }
-
-  if (data.amenities.length > 0) {
-    parts.push(
-      `Enjoy amenities like ${data.amenities.slice(0, 4).map((a) => a.toLowerCase()).join(', ')}.`
-    );
-  }
-
-  if (data.neighborhood && data.neighborhood.landmarks.length > 1) {
-    const landmarks = data.neighborhood.landmarks.slice(0, 3).join(', ');
-    parts.push(
-      `You're perfectly located near ${landmarks}, and all the iconic Charleston sights. We've included a local's guide to our favorite spots!`
-    );
-  } else {
-    parts.push(
-      `You're minutes from King Street's shopping and dining, the historic waterfront, Rainbow Row, and all the iconic Charleston sights. We've included a local's guide to our favorite spots!`
-    );
-  }
-
-  parts.push(
-    `Whether you're here for a romantic weekend, family vacation, or exploring the Lowcountry, our place is your perfect home base. Book now and get ready to fall in love with Charleston!`
-  );
-
-  return parts.join(' ');
-}
-
-function generateSocialCaptions(data: {
-  address: string;
-  propertyType: string;
-  amenities: string[];
-  neighborhood: Neighborhood | null;
-}): string[] {
-  const locationTag = data.neighborhood ? `in ${data.neighborhood.name}` : 'in Charleston';
-  const neighborhoodHashtag = data.neighborhood
-    ? `#${data.neighborhood.name.replace(/\s+/g, '')}`
-    : '#CharlestonSC';
-
-  return [
-    `Just listed ${locationTag}! This stunning ${data.propertyType.toLowerCase()} captures everything we love about Lowcountry living. DM for details or click the link in bio to schedule your showing. #CharlestonRealEstate #LowcountryLiving ${neighborhoodHashtag}`,
-    `New listing alert ${locationTag}! Fall in love with this ${data.propertyType.toLowerCase()} featuring ${data.amenities.slice(0, 2).join(' and ').toLowerCase()}. The Charleston lifestyle you've been dreaming of awaits. Link in bio! ${neighborhoodHashtag} #DreamHome #RealEstate`,
-    `Charleston charm meets modern living ${locationTag}. We're excited to present this exceptional ${data.propertyType.toLowerCase()} in one of the area's most sought-after locations. Contact us today to learn more. #CharlestonHomes ${neighborhoodHashtag} #LuxuryRealEstate`,
-  ];
 }

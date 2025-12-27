@@ -282,9 +282,10 @@ export default function AmenitiesSelector({
             <button
               type="button"
               onClick={onApplyDefaults}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-300 bg-blue-500/10 border border-blue-500/20 rounded-lg hover:bg-blue-500/20 transition"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-300 bg-blue-500/10 border border-blue-500/20 rounded-lg hover:bg-blue-500/20 transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+              aria-label={`Apply default amenities for ${neighborhoodName} neighborhood`}
             >
-              <RotateCcw className="w-3.5 h-3.5" />
+              <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
               Apply {neighborhoodName} Defaults
             </button>
           )}
@@ -292,9 +293,10 @@ export default function AmenitiesSelector({
             <button
               type="button"
               onClick={clearAll}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-300 bg-gray-700/50 border border-gray-600 rounded-lg hover:bg-gray-700 transition"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-300 bg-gray-700/50 border border-gray-600 rounded-lg hover:bg-gray-700 transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+              aria-label="Clear all selected amenities"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-3.5 h-3.5" aria-hidden="true" />
               Clear All
             </button>
           )}

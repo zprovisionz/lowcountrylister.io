@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { Check, Sparkles, Zap, Crown, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { logger } from '../lib/logger';
+import Button from '../components/ui/Button';
+import Alert from '../components/ui/Alert';
 
 interface PricingTier {
   name: string;
@@ -152,8 +155,11 @@ export default function Pricing() {
         throw new Error('No checkout URL returned');
       }
     } catch (err) {
-      console.error('Checkout error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to start checkout');
+      logger.error('Checkout error:', err);
+      const errorMessage = err instanceof Error 
+        ? err.message 
+        : 'Failed to start checkout. Please try again or contact support.';
+      setError(errorMessage);
       setLoading(null);
     }
   };
@@ -171,13 +177,14 @@ export default function Pricing() {
 
       <button
         onClick={handleBackToHome}
-        className="absolute top-6 left-6 flex items-center gap-2 text-gray-300 hover:text-white transition z-10"
+        className="absolute top-6 left-6 flex items-center gap-2 text-gray-300 hover:text-white transition z-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 rounded-lg px-2 py-1"
+        aria-label="Go back to home page"
       >
-        <ArrowLeft className="w-5 h-5" />
+        <ArrowLeft className="w-5 h-5" aria-hidden="true" />
         <span className="text-sm font-medium">Back to Home</span>
       </button>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <main id="main-content" className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16" tabIndex={-1}>
         <div className="text-center mb-16">
           <h1 className="text-5xl font-bold text-white mb-4">
             Choose Your Plan
@@ -189,8 +196,8 @@ export default function Pricing() {
         </div>
 
         {error && (
-          <div className="max-w-2xl mx-auto mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-center">
-            {error}
+          <div className="max-w-2xl mx-auto mb-8">
+            <Alert variant="error">{error}</Alert>
           </div>
         )}
 
@@ -250,19 +257,17 @@ export default function Pricing() {
                   ))}
                 </ul>
 
-                <button
+                <Button
                   onClick={() => handleSubscribe(tier)}
                   disabled={loading !== null || isCurrentPlan}
-                  className={`w-full py-3 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                    isCurrentPlan
-                      ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                      : tier.popular
-                      ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg'
-                      : 'bg-gray-700 text-white hover:bg-gray-600'
-                  }`}
+                  isLoading={loading === tier.tier}
+                  variant={tier.popular ? 'primary' : 'secondary'}
+                  fullWidth
+                  size="lg"
+                  aria-label={isCurrentPlan ? `Current plan: ${tier.name}` : `Subscribe to ${tier.name} plan`}
                 >
-                  {loading === tier.tier ? 'Loading...' : isCurrentPlan ? 'Current Plan' : tier.cta}
-                </button>
+                  {isCurrentPlan ? 'Current Plan' : tier.cta}
+                </Button>
               </div>
             );
           })}
@@ -327,7 +332,7 @@ export default function Pricing() {
             </div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

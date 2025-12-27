@@ -286,10 +286,12 @@ export default function AmenitiesStep({
               key={category.id}
               type="button"
               onClick={() => setActiveCategory(category.id)}
-              className={`relative p-4 rounded-xl border-2 transition-all duration-200 text-left ${getCategoryColorClasses(
+              className={`relative p-4 rounded-xl border-2 transition-all duration-200 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${getCategoryColorClasses(
                 category.id,
                 isActive
               )}`}
+              aria-label={`${category.name} category${selectedCount > 0 ? `, ${selectedCount} selected` : ''}`}
+              aria-pressed={isActive}
             >
               <CategoryIcon className={`w-6 h-6 mb-2 ${isActive ? '' : getCategoryColorClasses(category.id, false).split(' ').find(c => c.startsWith('text-'))}`} />
               <span className="font-medium block text-sm">{category.name}</span>
@@ -315,13 +317,15 @@ export default function AmenitiesStep({
                 key={amenity.id}
                 type="button"
                 onClick={() => toggleAmenity(amenity.id)}
-                className={`relative flex items-center gap-3 p-3 rounded-xl border-2 transition-all duration-200 text-left group ${
+                className={`relative flex items-center gap-3 p-3 rounded-xl border-2 transition-all duration-200 text-left group focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
                   isSelected
                     ? 'border-blue-500 bg-blue-500/20'
                     : typical
                     ? 'border-blue-500/40 bg-blue-500/5 hover:border-blue-500/60 hover:bg-blue-500/10'
                     : 'border-gray-700 hover:border-gray-600 hover:bg-gray-700/30'
                 }`}
+                aria-label={`${isSelected ? 'Deselect' : 'Select'} ${amenity.label} amenity${typical ? ' (typical for this neighborhood)' : ''}`}
+                aria-pressed={isSelected}
               >
                 <div
                   className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
@@ -370,9 +374,10 @@ export default function AmenitiesStep({
                 <button
                   type="button"
                   onClick={() => removeCustomAmenity(amenity)}
-                  className="w-4 h-4 rounded-full bg-blue-500/30 hover:bg-red-500/50 flex items-center justify-center transition"
+                  className="w-4 h-4 rounded-full bg-blue-500/30 hover:bg-red-500/50 flex items-center justify-center transition focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+                  aria-label={`Remove custom amenity: ${amenity}`}
                 >
-                  <X className="w-3 h-3" />
+                  <X className="w-3 h-3" aria-hidden="true" />
                 </button>
               </span>
             ))}
@@ -393,9 +398,10 @@ export default function AmenitiesStep({
             type="button"
             onClick={addCustomAmenity}
             disabled={!customInput.trim()}
-            className="inline-flex items-center gap-2 px-5 py-3 font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            className="inline-flex items-center gap-2 px-5 py-3 font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+            aria-label="Add custom amenity"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-5 h-5" aria-hidden="true" />
             Add
           </button>
         </div>

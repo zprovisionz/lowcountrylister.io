@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase, UserProfile } from '../lib/supabase';
+import { logger } from '../lib/logger';
 
 interface AuthContextType {
   user: User | null;
@@ -25,43 +26,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
 
-    if (error) {
-      console.error('Error fetching profile:', error);
+      if (error) {
+        logger.error('Error fetching profile:', error);
+        return null;
+      }
+
+      return data;
+    } catch (err) {
+      logger.error('Error fetching profile:', err);
       return null;
     }
-
-    return data;
   };
 
   const createProfile = async (userId: string, email: string) => {
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .insert({
-        id: userId,
-        email,
-        subscription_tier: 'free',
-        generations_this_month: 0,
-        staging_credits_used_this_month: 0,
-        staging_credits_bonus: 0,
-        total_stagings_generated: 0,
-        billing_period_start: new Date().toISOString(),
-        last_reset_date: new Date().toISOString(),
-      })
-      .select()
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .insert({
+          id: userId,
+          email,
+          subscription_tier: 'free',
+          generations_this_month: 0,
+          staging_credits_used_this_month: 0,
+          staging_credits_bonus: 0,
+          total_stagings_generated: 0,
+          billing_period_start: new Date().toISOString(),
+          last_reset_date: new Date().toISOString(),
+        })
+        .select()
+        .single();
 
-    if (error) {
-      console.error('Error creating profile:', error);
+      if (error) {
+        logger.error('Error creating profile:', error);
+        return null;
+      }
+
+      return data;
+    } catch (err) {
+      logger.error('Error creating profile:', err);
       return null;
     }
-
-    return data;
   };
 
   const refreshProfile = async () => {
@@ -81,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       }
     } catch (error) {
-      console.error('Quota check error:', error);
+      logger.error('Quota check error:', error);
     }
     
     const profile = await fetchProfile(user.id);
@@ -123,23 +134,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (error) throw error;
+    try {
+      const { error } = await supabase.auth.signUp({ email, password });
+      if (error) {
+        if (error.message.includes('already registered')) {
+          throw new Error('An account with this email already exists. Please sign in instead.');
+        }
+        if (error.message.includes('Password')) {
+          throw new Error('Password must be at least 6 characters long.');
+        }
+        throw new Error(error.message || 'Failed to create account. Please try again.');
+      }
+    } catch (err) {
+      logger.error('Sign up error:', err);
+      throw err;
+    }
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        if (error.message.includes('Invalid login')) {
+          throw new Error('Invalid email or password. Please check your credentials and try again.');
+        }
+        if (error.message.includes('Email not confirmed')) {
+          throw new Error('Please check your email and confirm your account before signing in.');
+        }
+        throw new Error(error.message || 'Failed to sign in. Please try again.');
+      }
+    } catch (err) {
+      logger.error('Sign in error:', err);
+      throw err;
+    }
   };
 
   const signInWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/dashboard`,
-      },
-    });
-    if (error) throw error;
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        },
+      });
+      if (error) {
+        throw new Error(error.message || 'Failed to sign in with Google. Please try again.');
+      }
+    } catch (err) {
+      logger.error('Google OAuth error:', err);
+      throw err;
+    }
   };
 
   const signOut = async () => {

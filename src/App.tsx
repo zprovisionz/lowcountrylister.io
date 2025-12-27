@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import SkipLink from './components/SkipLink';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import GenerateListing from './pages/GenerateListing';
@@ -35,17 +36,27 @@ function Router() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
-        <Loader2 className="w-12 h-12 text-blue-400 animate-spin" />
+        <Loader2 className="w-12 h-12 text-blue-400 animate-spin" aria-label="Loading application" />
       </div>
     );
   }
 
   if (currentPath === '/login') {
-    return <Login />;
+    return (
+      <>
+        <SkipLink targetId="login-form" children="Skip to login form" />
+        <Login />
+      </>
+    );
   }
 
   if (currentPath === '/pricing') {
-    return <Pricing />;
+    return (
+      <>
+        <SkipLink />
+        <Pricing />
+      </>
+    );
   }
 
   if (currentPath === '/account') {
@@ -53,7 +64,12 @@ function Router() {
       window.history.pushState({}, '', '/login');
       return <Login />;
     }
-    return <Account />;
+    return (
+      <>
+        <SkipLink />
+        <Account />
+      </>
+    );
   }
 
   if (currentPath === '/dashboard') {
@@ -61,14 +77,29 @@ function Router() {
       window.history.pushState({}, '', '/login');
       return <Login />;
     }
-    return <Dashboard />;
+    return (
+      <>
+        <SkipLink />
+        <Dashboard />
+      </>
+    );
   }
 
   if (currentPath === '/generate') {
-    return <GenerateListing />;
+    return (
+      <>
+        <SkipLink />
+        <GenerateListing />
+      </>
+    );
   }
 
-  return <Landing />;
+  return (
+    <>
+      <SkipLink />
+      <Landing />
+    </>
+  );
 }
 
 function App() {
