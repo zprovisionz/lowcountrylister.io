@@ -1,5 +1,5 @@
-import { createServiceClient } from './supabase';
-import { SUBSCRIPTION_TIERS, UserProfile } from './types';
+import { createServiceClient } from './supabase.js';
+import { SUBSCRIPTION_TIERS, UserProfile } from './types.js';
 
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
   const supabase = createServiceClient();

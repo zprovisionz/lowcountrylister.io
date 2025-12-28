@@ -1,10 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
-import { getUserFromToken, createServiceClient } from '../_lib/supabase';
-import { CreateCheckoutSchema } from '../_lib/validation';
+import { getUserFromToken, createServiceClient } from '../_lib/supabase.js';
+import { CreateCheckoutSchema } from '../_lib/validation.js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2024-12-18.acacia',
+  apiVersion: '2025-02-24.acacia',
 });
 
 export default async function handler(

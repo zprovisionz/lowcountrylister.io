@@ -1,16 +1,16 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getUserFromToken } from './_lib/supabase';
-import { createServiceClient } from './_lib/supabase';
+import { getUserFromToken } from './_lib/supabase.js';
+import { createServiceClient } from './_lib/supabase.js';
 import {
   getUserProfile,
   checkAndResetQuota,
   canGenerate,
   incrementGenerationCount,
-} from './_lib/quota';
-import { GenerateListingSchema } from './_lib/validation';
-import { extractPropertyFeatures } from './_lib/vision';
+} from './_lib/quota.js';
+import { GenerateListingSchema } from './_lib/validation.js';
+import { extractPropertyFeatures } from './_lib/vision.js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { logger } from './_lib/logger';
+import { logger } from './_lib/logger.js';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -555,7 +555,7 @@ async function generateDescriptions(
   let fewShotExamples = '';
   try {
     const { getFewShotExamples, formatFewShotExamplesForPrompt } = await import(
-      '../src/data/charleston_fewshot_examples'
+      '../src/data/charleston_fewshot_examples.js'
     );
     
     // Select 2-3 relevant examples based on property type and neighborhood

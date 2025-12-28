@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createServiceClient } from './_lib/supabase';
+import { createServiceClient } from './_lib/supabase.js';
 
 /**
  * Cron job endpoint to reset monthly quotas for all users

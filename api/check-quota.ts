@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getUserFromToken } from './_lib/supabase';
-import { getUserProfile, checkAndResetQuota } from './_lib/quota';
+import { getUserFromToken } from './_lib/supabase.js';
+import { getUserProfile, checkAndResetQuota } from './_lib/quota.js';
 
 /**
  * Endpoint to check and reset quota if needed

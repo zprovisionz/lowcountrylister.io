@@ -1,15 +1,15 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getUserFromToken, createServiceClient } from './_lib/supabase';
+import { getUserFromToken, createServiceClient } from './_lib/supabase.js';
 import {
   getUserProfile,
   checkAndResetQuota,
   canStage,
   checkRateLimit,
   incrementStagingCount,
-} from './_lib/quota';
-import { StagePhotoSchema } from './_lib/validation';
-import { analyzePhotoForStaging } from './_lib/vision';
-import { requestStaging } from './_lib/staging-provider';
+} from './_lib/quota.js';
+import { StagePhotoSchema } from './_lib/validation.js';
+import { analyzePhotoForStaging } from './_lib/vision.js';
+import { requestStaging } from './_lib/staging-provider.js';
 
 /**
  * Background processing function for staging jobs

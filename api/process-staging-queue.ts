@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createServiceClient } from './_lib/supabase';
-import { checkStagingStatus } from './_lib/staging-provider';
+import { createServiceClient } from './_lib/supabase.js';
+import { checkStagingStatus } from './_lib/staging-provider.js';
 
 /**
  * Cron job endpoint to process pending staging queue entries
@@ -56,7 +56,7 @@ export default async function handler(
             .eq('id', job.id);
 
           // Import staging provider
-          const { requestStaging } = await import('./_lib/staging-provider');
+          const { requestStaging } = await import('./_lib/staging-provider.js');
 
           // Request staging from provider
           const stagingResponse = await requestStaging({
