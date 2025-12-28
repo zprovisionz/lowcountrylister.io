@@ -6,6 +6,7 @@ import ResultsDisplay from '../components/ResultsDisplay';
 import GenerationProgress from '../components/GenerationProgress';
 import Alert from '../components/ui/Alert';
 import Button from '../components/ui/Button';
+import StructuredData from '../components/StructuredData';
 import { supabase } from '../lib/supabase';
 import { apiCall, parseApiError, AppError } from '../lib/errorHandler';
 import { neighborhoodService } from '../services/neighborhoodService';
@@ -17,10 +18,14 @@ export default function Landing() {
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [results, setResults] = useState<{
     mls: string;
+    previewSnippet?: string;
     airbnb?: string;
     social?: string[];
     confidence: 'high' | 'medium';
     generationId?: string;
+    sessionId?: string;
+    remainingGenerations?: number;
+    isAnonymous?: boolean;
     authenticity?: {
       score: 'high' | 'medium' | 'low';
       suggestions: string[];
@@ -30,41 +35,112 @@ export default function Landing() {
   const handleGetStarted = async () => {
     if (!address.trim()) return;
 
-    // If user is not authenticated, redirect to generate page (which will prompt for login)
-    if (!user) {
-      window.history.pushState({ address }, '', '/generate');
-      window.dispatchEvent(new PopStateEvent('popstate'));
-      return;
-    }
-
-    // Check quota for authenticated users
-    const generationsRemaining = profile
-      ? profile.subscription_tier === 'free'
-        ? 3 - profile.generations_this_month
-        : profile.subscription_tier === 'starter'
-        ? 50 - profile.generations_this_month
-        : Infinity
-      : Infinity;
-
-    if (generationsRemaining <= 0) {
-      window.history.pushState({ address }, '', '/generate');
-      window.dispatchEvent(new PopStateEvent('popstate'));
-      return;
-    }
-
-    // Instant generation for authenticated users
     setGenerating(true);
     setGenerationError(null);
     setResults(null);
 
     try {
+      // Use anonymous endpoint if user is not authenticated
+      if (!user) {
+        const result = await apiCall<{
+          success: boolean;
+          data?: {
+            id: string;
+            session_id: string;
+            mls_description: string;
+            preview_snippet: string;
+            confidence_score: number;
+            confidence_level: 'high' | 'medium';
+            remaining_generations: number;
+          };
+          error?: string;
+          code?: string;
+          count?: number;
+          remaining?: number;
+        }>(
+          '/api/generate-anonymous',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              address: address.trim(),
+              property_type: 'single_family',
+              amenities: [],
+              photo_urls: [],
+              include_airbnb: false,
+              include_social: false,
+            }),
+          },
+          2
+        );
+
+        if (!result.success || !result.data) {
+          // Check if rate limit exceeded
+          if (result.code === 'RATE_LIMIT_EXCEEDED') {
+            setGenerationError('You\'ve reached the limit of 3 free generations. Sign up for unlimited access!');
+            // Show sign-up prompt
+            setTimeout(() => {
+              window.history.pushState({}, '', '/login');
+              window.dispatchEvent(new PopStateEvent('popstate'));
+            }, 2000);
+            return;
+          }
+          throw new Error(result.error || 'Invalid response from server');
+        }
+
+        // Calculate authenticity for display
+        const authenticity = neighborhoodService.calculateCharlestonAuthenticity(result.data.mls_description);
+
+        setResults({
+          mls: result.data.mls_description, // Full description stored but will show preview
+          previewSnippet: result.data.preview_snippet, // Preview snippet for display
+          airbnb: undefined,
+          social: undefined,
+          confidence: result.data.confidence_level || 'medium',
+          generationId: result.data.id,
+          sessionId: result.data.session_id,
+          remainingGenerations: result.data.remaining_generations,
+          isAnonymous: true,
+          authenticity: {
+            score: authenticity.score,
+            suggestions: authenticity.suggestions,
+          },
+        });
+
+        // Scroll to results
+        setTimeout(() => {
+          const resultsElement = document.getElementById('generation-results');
+          if (resultsElement) {
+            resultsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 100);
+        return;
+      }
+
+      // Authenticated user flow - check quota
+      const generationsRemaining = profile
+        ? profile.subscription_tier === 'free'
+          ? 3 - profile.generations_this_month
+          : profile.subscription_tier === 'starter'
+          ? 50 - profile.generations_this_month
+          : Infinity
+        : Infinity;
+
+      if (generationsRemaining <= 0) {
+        window.history.pushState({ address }, '', '/generate');
+        window.dispatchEvent(new PopStateEvent('popstate'));
+        return;
+      }
+
       // Get auth token
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('Not authenticated');
       }
 
-      // Call the API with just address (quick mode - API will auto-populate amenities)
+      // Call the authenticated API
       const result = await apiCall<{
         success: boolean;
         data?: {
@@ -86,14 +162,14 @@ export default function Landing() {
           },
           body: JSON.stringify({
             address: address.trim(),
-            property_type: 'single_family', // Default property type
-            amenities: [], // Empty - API will auto-populate from neighborhood
+            property_type: 'single_family',
+            amenities: [],
             photo_urls: [],
             include_airbnb: false,
             include_social: false,
           }),
         },
-        2 // 2 retries
+        2
       );
 
       if (!result.success || !result.data) {
@@ -109,6 +185,7 @@ export default function Landing() {
         social: result.data.social_captions || undefined,
         confidence: result.data.confidence_level || 'medium',
         generationId: result.data.id,
+        isAnonymous: false,
         authenticity: {
           score: authenticity.score,
           suggestions: authenticity.suggestions,
@@ -182,7 +259,9 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white relative overflow-hidden">
+    <>
+      <StructuredData type="LocalBusiness" />
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 text-white relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/20 via-gray-900 to-gray-900"></div>
       <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-blue-500/10 to-transparent"></div>
       <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-500"></div>
@@ -339,6 +418,9 @@ export default function Landing() {
               <div className="space-y-6">
                 <ResultsDisplay
                   mlsDescription={results.mls}
+                  previewSnippet={results.previewSnippet}
+                  isAnonymous={results.isAnonymous}
+                  remainingGenerations={results.remainingGenerations}
                   airbnbDescription={results.airbnb}
                   socialCaptions={results.social}
                   confidenceLevel={results.confidence}
@@ -741,6 +823,7 @@ export default function Landing() {
           </div>
         </div>
       </footer>
-    </div>
+      </div>
+    </>
   );
 }

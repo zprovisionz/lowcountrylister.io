@@ -114,24 +114,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })();
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      (async () => {
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          let profile = await fetchProfile(session.user.id);
-          if (!profile) {
-            profile = await createProfile(session.user.id, session.user.email!);
-          }
-          setProfile(profile);
-        } else {
-          setProfile(null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        let profile = await fetchProfile(session.user.id);
+        if (!profile) {
+          profile = await createProfile(session.user.id, session.user.email!);
         }
-        setLoading(false);
-      })();
+        setProfile(profile);
+        // Link anonymous session when user signs in
+        if (event === 'SIGNED_IN') {
+          linkAnonymousSession().catch((err) => {
+            logger.warn('Failed to link anonymous session on auth change:', err);
+          });
+        }
+      } else {
+        setProfile(null);
+      }
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const linkAnonymousSession = async () => {
+    try {
+      // Get session ID from cookie
+      const cookies = document.cookie;
+      const sessionMatch = cookies.match(/anon_session=([^;]+)/);
+      if (!sessionMatch) return; // No anonymous session to link
+
+      const sessionId = sessionMatch[1];
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return; // Not authenticated yet
+
+      // Call link endpoint
+      await fetch('/api/link-anonymous-sessions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ session_id: sessionId }),
+      }).catch((err) => {
+        logger.warn('Failed to link anonymous session:', err);
+        // Non-critical, don't throw
+      });
+    } catch (err) {
+      logger.warn('Error linking anonymous session:', err);
+      // Non-critical, don't throw
+    }
+  };
 
   const signUp = async (email: string, password: string) => {
     try {
@@ -145,6 +178,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         throw new Error(error.message || 'Failed to create account. Please try again.');
       }
+      // Link anonymous session after successful sign-up
+      await linkAnonymousSession();
     } catch (err) {
       logger.error('Sign up error:', err);
       throw err;
@@ -163,6 +198,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         throw new Error(error.message || 'Failed to sign in. Please try again.');
       }
+      // Link anonymous session after successful sign-in
+      await linkAnonymousSession();
     } catch (err) {
       logger.error('Sign in error:', err);
       throw err;

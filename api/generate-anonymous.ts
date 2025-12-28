@@ -1,12 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getUserFromToken } from './_lib/supabase.js';
 import { createServiceClient } from './_lib/supabase.js';
-import {
-  getUserProfile,
-  checkAndResetQuota,
-  canGenerate,
-  incrementGenerationCount,
-} from './_lib/quota.js';
+import { checkAnonymousRateLimit, incrementAnonymousGenerationCount } from './_lib/rateLimit.js';
+import { getSessionId, getClientIP, hashIP, generateDeviceFingerprint } from './_lib/fingerprint.js';
 import { GenerateListingSchema } from './_lib/validation.js';
 import { extractPropertyFeatures } from './_lib/vision.js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -14,6 +9,15 @@ import { logger } from './_lib/logger.js';
 import { getCachedNeighborhood, setCachedNeighborhood } from './_lib/neighborhoodCache.js';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+
+/**
+ * Generate preview snippet from full description (first 50 words)
+ */
+function generatePreviewSnippet(description: string): string {
+  const words = description.split(/\s+/).filter(word => word.length > 0);
+  const previewWords = words.slice(0, 50);
+  return previewWords.join(' ') + (words.length > 50 ? '...' : '');
+}
 
 export default async function handler(
   req: VercelRequest,
@@ -24,11 +28,18 @@ export default async function handler(
   }
 
   try {
-    const user = await getUserFromToken(req.headers.authorization);
-    if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    // Check rate limit before processing
+    const rateLimitCheck = await checkAnonymousRateLimit(req);
+    if (!rateLimitCheck.allowed) {
+      return res.status(429).json({
+        error: rateLimitCheck.reason,
+        code: 'RATE_LIMIT_EXCEEDED',
+        count: rateLimitCheck.count,
+        remaining: rateLimitCheck.remaining,
+      });
     }
 
+    // Validate request data
     const validationResult = GenerateListingSchema.safeParse(req.body);
     if (!validationResult.success) {
       return res.status(400).json({
@@ -39,21 +50,29 @@ export default async function handler(
 
     const data = validationResult.data;
 
-    let profile = await getUserProfile(user.id);
-    if (!profile) {
-      return res.status(404).json({ error: 'User profile not found' });
-    }
+    // Get or create session ID
+    const sessionId = getSessionId(req);
+    const clientIP = getClientIP(req);
+    const hashedIP = hashIP(clientIP);
+    const deviceFingerprint = generateDeviceFingerprint(req);
 
-    profile = await checkAndResetQuota(profile);
+    // Get generation count for this session
+    const supabase = createServiceClient();
+    const { count: existingCount } = await supabase
+      .from('anonymous_generations')
+      .select('*', { count: 'exact', head: true })
+      .eq('session_id', sessionId)
+      .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
-    const generationCheck = canGenerate(profile);
-    if (!generationCheck.allowed) {
-      return res.status(403).json({
-        error: generationCheck.reason,
-        code: 'QUOTA_EXCEEDED',
-      });
-    }
+    const generationCount = (existingCount || 0) + 1;
 
+    logger.info('Anonymous generation request:', {
+      address: data.address,
+      sessionId: sessionId.substring(0, 8) + '...',
+      generationCount,
+    });
+
+    // Geocode address
     logger.info('Geocoding address and extracting photo features in parallel...');
     // Run geocoding and photo analysis in parallel for better performance
     const [geocodingData, visionFeatures] = await Promise.all([
@@ -63,22 +82,24 @@ export default async function handler(
         : Promise.resolve({ features: [], confidence: 0 }),
     ]);
 
+    // Find neighborhood
     logger.info('Loading neighborhood data...');
     const neighborhoodData = await findNeighborhood(geocodingData);
 
-    // Quick mode: Auto-populate typical amenities if none provided
+    // Auto-populate amenities from neighborhood if none provided
     let finalAmenities = data.amenities || [];
     if (finalAmenities.length === 0 && neighborhoodData.typical_amenities && neighborhoodData.typical_amenities.length > 0) {
       logger.info('Quick mode: Auto-populating typical amenities from neighborhood');
       finalAmenities = neighborhoodData.typical_amenities;
     }
 
-    // Update data with final amenities for generation
+    // Update data with final amenities
     const dataWithAmenities = {
       ...data,
       amenities: finalAmenities,
     };
 
+    // Generate descriptions
     logger.info('Generating listing description...');
     const descriptions = await generateDescriptions(
       dataWithAmenities,
@@ -87,90 +108,68 @@ export default async function handler(
       visionFeatures.features
     );
 
-    // Run fact-check on ALL outputs for 97% accuracy guarantee
+    // Run fact-check on MLS description
     const mlsConfidence = await factCheckDescription(
       descriptions.mls_description,
       dataWithAmenities,
       visionFeatures.features,
       geocodingData
     );
-    
-    let airbnbConfidence = mlsConfidence;
-    if (descriptions.airbnb_description) {
-      airbnbConfidence = await factCheckDescription(
-        descriptions.airbnb_description,
-        dataWithAmenities,
-        visionFeatures.features,
-        geocodingData
-      );
-    }
-    
-    // Fact-check social captions (check each one)
-    let socialConfidence = mlsConfidence;
-    if (descriptions.social_captions && descriptions.social_captions.length > 0) {
-      const socialScores = await Promise.all(
-        descriptions.social_captions.map((caption: string) =>
-          factCheckDescription(caption, dataWithAmenities, visionFeatures.features, geocodingData)
-        )
-      );
-      socialConfidence = Math.round(socialScores.reduce((a, b) => a + b, 0) / socialScores.length);
-    }
-    
-    // Use the minimum confidence score to ensure 97% accuracy across all outputs
-    const confidenceScore = Math.min(mlsConfidence, airbnbConfidence, socialConfidence);
 
-    const supabase = createServiceClient();
+    // Generate preview snippet (first 50 words)
+    const previewSnippet = generatePreviewSnippet(descriptions.mls_description);
 
-    const { data: generation, error: insertError } = await supabase
-      .from('generations')
+    // Store in anonymous_generations table
+    const { data: anonymousGeneration, error: insertError } = await supabase
+      .from('anonymous_generations')
       .insert({
-        user_id: user.id,
+        session_id: sessionId,
+        ip_address: hashedIP,
+        device_fingerprint: deviceFingerprint,
+        generation_count: generationCount,
         address: data.address,
-        bedrooms: data.bedrooms,
-        bathrooms: data.bathrooms,
-        square_feet: data.square_feet,
-        property_type: data.property_type,
-        amenities: finalAmenities,
-        photo_urls: data.photo_urls,
-        include_airbnb: data.include_airbnb,
-        include_social: data.include_social,
         mls_description: descriptions.mls_description,
-        airbnb_description: descriptions.airbnb_description,
-        social_captions: descriptions.social_captions,
-        confidence_score: confidenceScore,
-        confidence_level: confidenceScore >= 80 ? 'high' : 'medium',
+        preview_snippet: previewSnippet,
         geocoding_data: geocodingData,
         neighborhood_data: neighborhoodData,
       })
       .select()
       .single();
 
-    if (insertError || !generation) {
+    if (insertError || !anonymousGeneration) {
       logger.error('Insert error:', insertError);
       return res.status(500).json({ error: 'Failed to save generation' });
     }
 
-    await incrementGenerationCount(user.id);
+    // Set session cookie for client
+    res.setHeader('Set-Cookie', `anon_session=${sessionId}; Path=/; Max-Age=86400; SameSite=Lax; HttpOnly`);
 
+    // Return response with both preview and full description
+    // Frontend will only show preview to anonymous users
     return res.status(200).json({
       success: true,
       data: {
-        id: generation.id,
+        id: anonymousGeneration.id,
+        session_id: sessionId,
         mls_description: descriptions.mls_description,
-        airbnb_description: descriptions.airbnb_description,
-        social_captions: descriptions.social_captions,
-        confidence_score: confidenceScore,
-        confidence_level: confidenceScore >= 80 ? 'high' : 'medium',
+        preview_snippet: previewSnippet,
+        confidence_score: mlsConfidence,
+        confidence_level: mlsConfidence >= 80 ? 'high' : 'medium',
+        remaining_generations: Math.max(0, 3 - generationCount),
       },
     });
   } catch (error) {
-    logger.error('Generation error:', error);
+    logger.error('Anonymous generation error:', error);
     return res.status(500).json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 }
+
+// Import shared functions from generate.ts
+// These functions are duplicated here to avoid circular dependencies
+// In production, consider extracting to a shared module
 
 async function geocodeAddress(address: string) {
   const GEOCODIO_API_KEY = process.env.GEOCODIO_API_KEY;
@@ -194,20 +193,18 @@ async function geocodeAddress(address: string) {
       throw new Error('Geocoding failed');
     }
 
-    const data = await response.json() as GeocodioResponse;
+    const data = await response.json() as { results?: Array<{ location: { lat: number; lng: number }; formatted_address?: string; address_components?: { postal_code?: string } }> };
     const result = data.results?.[0];
 
     if (!result) {
       throw new Error('No geocoding results');
     }
 
-    // Use Google Maps Distance Matrix API for accurate driving times
     const distances = await getDrivingDistances(
       result.location.lat,
       result.location.lng
     );
 
-    // Extract zip code from result if available
     const zipCode = result.address_components?.postal_code || 
                     result.formatted_address?.match(/\b(\d{5})\b/)?.[1] || 
                     null;
@@ -231,18 +228,6 @@ async function geocodeAddress(address: string) {
   }
 }
 
-// Type definition for Geocod.io API response
-interface GeocodioResponse {
-  results?: Array<{
-    location: { lat: number; lng: number };
-    formatted_address?: string;
-    address_components?: {
-      postal_code?: string;
-    };
-  }>;
-}
-
-// Key Charleston landmarks for distance calculation
 const CHARLESTON_LANDMARKS = [
   { name: "Shem Creek", lat: 32.8014, lng: -79.8625 },
   { name: "Downtown/King Street", lat: 32.7876, lng: -79.9403 },
@@ -254,23 +239,6 @@ const CHARLESTON_LANDMARKS = [
   { name: "Magnolia Plantation", lat: 32.8611, lng: -80.0708 },
 ];
 
-// Type definition for Google Maps Distance Matrix API response
-interface DistanceMatrixResponse {
-  status: string;
-  rows?: Array<{
-    elements?: Array<{
-      status: string;
-      distance?: { value: number };
-      duration?: { value: number };
-      duration_in_traffic?: { value: number };
-    }>;
-  }>;
-}
-
-/**
- * Get accurate driving distances and times using Google Maps Distance Matrix API
- * Returns driving times in normal traffic conditions
- */
 async function getDrivingDistances(
   originLat: number,
   originLng: number
@@ -279,24 +247,19 @@ async function getDrivingDistances(
 
   if (!GOOGLE_MAPS_API_KEY) {
     logger.warn('Google Maps API key not found, using fallback distance calculation');
-    // Fallback to simple distance calculation
     return CHARLESTON_LANDMARKS.map((landmark) => {
       const distance = calculateDistance(originLat, originLng, landmark.lat, landmark.lng);
       return {
         name: landmark.name,
         distance_miles: Math.round(distance * 10) / 10,
-        drive_time_minutes: Math.round(distance * 2.5), // Rough estimate
+        drive_time_minutes: Math.round(distance * 2.5),
       };
     });
   }
 
   try {
-    // Build origins and destinations for Distance Matrix API
     const origin = `${originLat},${originLng}`;
     const destinations = CHARLESTON_LANDMARKS.map((l) => `${l.lat},${l.lng}`).join('|');
-
-    // Call Distance Matrix API with departure_time for normal traffic
-    // Using "now" as departure time to get current traffic conditions
     const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${origin}&destinations=${destinations}&units=imperial&departure_time=now&traffic_model=best_guess&key=${GOOGLE_MAPS_API_KEY}`;
 
     const response = await fetch(url);
@@ -305,19 +268,27 @@ async function getDrivingDistances(
       throw new Error(`Distance Matrix API error: ${response.status}`);
     }
 
-    const data = await response.json() as DistanceMatrixResponse;
+    const data = await response.json() as {
+      status: string;
+      rows?: Array<{
+        elements?: Array<{
+          status: string;
+          distance?: { value: number };
+          duration?: { value: number };
+          duration_in_traffic?: { value: number };
+        }>;
+      }>;
+    };
 
     if (data.status !== 'OK' || !data.rows?.[0]?.elements || data.rows[0].elements.length !== CHARLESTON_LANDMARKS.length) {
       throw new Error(`Distance Matrix API returned invalid response: ${data.status}`);
     }
 
-    // Map API results to landmarks
     const elements = data.rows[0].elements;
     return CHARLESTON_LANDMARKS.map((landmark, index) => {
       const element = elements[index];
 
       if (!element || element.status !== 'OK') {
-        // Fallback if specific destination fails
         const distance = calculateDistance(originLat, originLng, landmark.lat, landmark.lng);
         return {
           name: landmark.name,
@@ -326,9 +297,7 @@ async function getDrivingDistances(
         };
       }
 
-      // Extract distance in miles and duration in minutes
       if (!element.distance || !element.duration) {
-        // Fallback if distance or duration is missing
         const distance = calculateDistance(originLat, originLng, landmark.lat, landmark.lng);
         return {
           name: landmark.name,
@@ -337,10 +306,10 @@ async function getDrivingDistances(
         };
       }
 
-      const distanceMiles = element.distance.value / 1609.34; // Convert meters to miles
+      const distanceMiles = element.distance.value / 1609.34;
       const durationMinutes = element.duration_in_traffic?.value 
-        ? Math.round(element.duration_in_traffic.value / 60) // Use traffic-adjusted time if available
-        : Math.round(element.duration.value / 60); // Fallback to base duration
+        ? Math.round(element.duration_in_traffic.value / 60)
+        : Math.round(element.duration.value / 60);
 
       return {
         name: landmark.name,
@@ -350,7 +319,6 @@ async function getDrivingDistances(
     });
   } catch (error) {
     logger.error('Distance Matrix API error:', error);
-    // Fallback to simple distance calculation
     return CHARLESTON_LANDMARKS.map((landmark) => {
       const distance = calculateDistance(originLat, originLng, landmark.lat, landmark.lng);
       return {
@@ -368,7 +336,7 @@ function calculateDistance(
   lat2: number,
   lng2: number
 ): number {
-  const R = 3959; // Earth's radius in miles
+  const R = 3959;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLng = ((lng2 - lng1) * Math.PI) / 180;
   const a =
@@ -397,7 +365,6 @@ async function findNeighborhood(geocodingData: any) {
     const formattedAddress = geocodingData.formatted_address || '';
     const zipCode = geocodingData.zip_code || formattedAddress.match(/\b(\d{5})\b/)?.[1] || null;
 
-    // First try: Match by zip code (most reliable)
     if (zipCode) {
       const neighborhoodByZip = neighborhoods.find((n) => 
         n.zip_codes && n.zip_codes.includes(zipCode)
@@ -409,7 +376,6 @@ async function findNeighborhood(geocodingData: any) {
       }
     }
 
-    // Second try: Match by coordinates within bounds
     if (lat && lng) {
       const coordMatch = neighborhoods.find((n) => {
         if (!n.bounds) return false;
@@ -423,7 +389,6 @@ async function findNeighborhood(geocodingData: any) {
       }
     }
 
-    // Third try: Match by address string (name/alias)
     const addressLower = formattedAddress.toLowerCase();
     for (const neighborhood of neighborhoods) {
       if (addressLower.includes(neighborhood.name.toLowerCase())) {
@@ -442,7 +407,6 @@ async function findNeighborhood(geocodingData: any) {
       }
     }
 
-    // Fallback: Return generic Charleston data
     const fallbackData = {
       name: 'Charleston Area',
       description: 'Historic Charleston area with Lowcountry charm',
@@ -487,13 +451,11 @@ async function findNeighborhood(geocodingData: any) {
 }
 
 function formatNeighborhoodData(neighborhood: any) {
-  // Extract parks and schools from landmarks/attractions
   const parks: string[] = [];
   const schools: string[] = [];
   const landmarks: string[] = neighborhood.landmarks || [];
   const attractions: string[] = neighborhood.attractions || [];
 
-  // Identify parks (common park names)
   const parkKeywords = ['park', 'garden', 'greenway', 'trail', 'playground', 'recreation'];
   landmarks.forEach((item: string) => {
     if (parkKeywords.some(keyword => item.toLowerCase().includes(keyword))) {
@@ -506,7 +468,6 @@ function formatNeighborhoodData(neighborhood: any) {
     }
   });
 
-  // Identify schools (common school names)
   const schoolKeywords = ['school', 'academy', 'college', 'university', 'education'];
   landmarks.forEach((item: string) => {
     if (schoolKeywords.some(keyword => item.toLowerCase().includes(keyword))) {
@@ -542,11 +503,9 @@ function formatNeighborhoodData(neighborhood: any) {
 function buildNeighborhoodContext(neighborhoodData: any, _geocodingData: any): string {
   const sections: string[] = [];
   
-  // PRIMARY CONTEXT (Most Important)
   sections.push(`=== NEIGHBORHOOD: ${neighborhoodData.name} ===`);
   sections.push(`Vibe: ${neighborhoodData.vibe || neighborhoodData.description || 'Charleston area'}`);
   
-  // LOCATION ADVANTAGES (High Priority)
   if (neighborhoodData.schools && neighborhoodData.schools.length > 0) {
     sections.push(`\nTOP-RATED SCHOOLS: ${neighborhoodData.schools.join(', ')}`);
   } else if (neighborhoodData.proximities?.schools) {
@@ -557,7 +516,6 @@ function buildNeighborhoodContext(neighborhoodData: any, _geocodingData: any): s
     sections.push(`PARKS & RECREATION: ${neighborhoodData.parks.join(', ')}`);
   }
   
-  // LANDMARKS & ATTRACTIONS
   if (neighborhoodData.landmarks && neighborhoodData.landmarks.length > 0) {
     sections.push(`ICONIC LANDMARKS: ${neighborhoodData.landmarks.join(', ')}`);
   }
@@ -566,7 +524,6 @@ function buildNeighborhoodContext(neighborhoodData: any, _geocodingData: any): s
     sections.push(`LOCAL ATTRACTIONS: ${neighborhoodData.attractions.join(', ')}`);
   }
   
-  // CHARLESTON TERMINOLOGY (Critical for authenticity)
   if (neighborhoodData.vocabulary) {
     if (neighborhoodData.vocabulary.style) {
       sections.push(`ARCHITECTURAL STYLE: ${neighborhoodData.vocabulary.style}`);
@@ -576,10 +533,9 @@ function buildNeighborhoodContext(neighborhoodData: any, _geocodingData: any): s
     }
   }
   
-  // PROXIMITIES (beaches, downtown, etc.)
   if (neighborhoodData.proximities) {
     const proximityEntries = Object.entries(neighborhoodData.proximities)
-      .filter(([key]) => key !== 'schools') // Already handled above
+      .filter(([key]) => key !== 'schools')
       .map(([key, value]) => {
         const label = key.replace(/_/g, ' ').replace(/to /g, 'to ').replace(/\b\w/g, (l) => l.toUpperCase());
         return `${label}: ${value}`;
@@ -589,7 +545,6 @@ function buildNeighborhoodContext(neighborhoodData: any, _geocodingData: any): s
     }
   }
   
-  // SELLING POINTS
   if (neighborhoodData.selling_points && neighborhoodData.selling_points.length > 0) {
     sections.push(`NEIGHBORHOOD HIGHLIGHTS: ${neighborhoodData.selling_points.join(', ')}`);
   }
@@ -605,38 +560,31 @@ async function generateDescriptions(
 ) {
   const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
 
-  // Import and select relevant few-shot examples
   let fewShotExamples = '';
   try {
     const { getFewShotExamples, formatFewShotExamplesForPrompt } = await import(
       '../src/data/charleston_fewshot_examples.js'
     );
     
-    // Select 2-3 relevant examples based on property type and neighborhood
-    // Map API property type to few-shot example property type format
-    // Few-shot examples use: 'Single Family Home', 'Townhouse'
     const fewShotPropertyTypeMap: Record<string, string | undefined> = {
       'single_family': 'Single Family Home',
       'townhouse': 'Townhouse',
-      'condo': 'Townhouse', // Condos map to Townhouse in few-shot examples
-      'multi_family': undefined, // No multi-family examples available
-      'land': undefined, // No land examples available
-      'other': undefined, // No other examples available
+      'condo': 'Townhouse',
+      'multi_family': undefined,
+      'land': undefined,
+      'other': undefined,
     };
     const fewShotPropertyType = fewShotPropertyTypeMap[propertyData.property_type];
     
-    // Get examples filtered by property type and beds
     let examples = getFewShotExamples({
       propertyType: fewShotPropertyType,
       minBeds: propertyData.bedrooms ? propertyData.bedrooms - 1 : undefined,
       maxBeds: propertyData.bedrooms ? propertyData.bedrooms + 1 : undefined,
     });
     
-    // Prioritize examples from same or similar neighborhoods
     if (neighborhoodData.name && examples.length > 0) {
       const targetNeighborhood = neighborhoodData.name.toLowerCase();
       
-      // Sort examples: same neighborhood first, then similar, then others
       examples = examples.sort((a, b) => {
         const aNeighborhood = a.neighborhood.toLowerCase();
         const bNeighborhood = b.neighborhood.toLowerCase();
@@ -657,10 +605,8 @@ async function generateDescriptions(
     }
   } catch (error) {
     logger.warn('Could not load few-shot examples:', error);
-    // Continue without examples if import fails
   }
 
-  // Build neighborhood context with prioritized local features
   const neighborhoodContext = buildNeighborhoodContext(neighborhoodData, geocodingData);
 
   const systemPrompt = `You are an expert Charleston, SC real estate copywriter. Write compelling, accurate listing descriptions with 97%+ accuracy.
@@ -712,13 +658,11 @@ Write an MLS description that sells the lifestyle and location while staying fac
   const result = await model.generateContent(systemPrompt);
   let mlsDescription = result.response.text();
 
-  // Validate MLS description length (industry standard: 350-450 words)
   const validateMLSLength = (description: string): boolean => {
     const wordCount = description.split(/\s+/).filter(word => word.length > 0).length;
     return wordCount >= 350 && wordCount <= 450;
   };
 
-  // Regenerate if length is not within industry standard
   if (!validateMLSLength(mlsDescription)) {
     const wordCount = mlsDescription.split(/\s+/).filter(word => word.length > 0).length;
     logger.warn(`MLS description length ${wordCount} words, regenerating to meet 350-450 word requirement`);
@@ -727,113 +671,16 @@ Write an MLS description that sells the lifestyle and location while staying fac
     const retryResult = await model.generateContent(lengthPrompt);
     mlsDescription = retryResult.response.text();
     
-    // If still not valid after retry, log warning but proceed
     if (!validateMLSLength(mlsDescription)) {
       const finalWordCount = mlsDescription.split(/\s+/).filter(word => word.length > 0).length;
       logger.warn(`MLS description still ${finalWordCount} words after regeneration - proceeding with generated text`);
     }
   }
 
-  let airbnbDescription: string | null = null;
-  let socialCaptions: string[] | null = null;
-
-  if (propertyData.include_airbnb) {
-    const airbnbPrompt = `You are an expert vacation rental copywriter specializing in Charleston, SC properties. Write a compelling 200-250 word Airbnb/VRBO description.
-
-CRITICAL ACCURACY RULES:
-1. ONLY mention amenities/features from the "Confirmed Amenities" section
-2. DO NOT invent features - accuracy is paramount
-3. Focus on guest experience, comfort, and local attractions
-4. Use Charleston-specific terminology appropriately
-5. Highlight proximity to beaches, downtown, and attractions when verified distances are provided
-
-Property Data:
-- Address: ${propertyData.address || 'Address not provided'}
-- Type: ${propertyData.property_type}
-- Bedrooms: ${propertyData.bedrooms || 'Not specified'}
-- Bathrooms: ${propertyData.bathrooms || 'Not specified'}
-- Square Feet: ${propertyData.square_feet || 'Not specified'}
-- Confirmed Amenities: ${propertyData.amenities.length > 0 ? propertyData.amenities.join(', ') : 'None specified'}
-- Visual Features: ${visionFeatures.join(', ') || 'None detected'}
-
-${neighborhoodContext}
-
-${geocodingData.distances_to_landmarks && geocodingData.distances_to_landmarks.length > 0 ? `VERIFIED DRIVING DISTANCES:
-${geocodingData.distances_to_landmarks.map((d: any) => `- ${d.name}: ${d.drive_time_minutes}-minute drive`).join('\n')}
-` : ''}
-
-Write a 200-250 word description that:
-- Welcomes guests and sets expectations
-- Highlights key amenities and features
-- Emphasizes location advantages (beaches, downtown, attractions)
-- Uses warm, inviting tone
-- Mentions check-in flexibility and guest experience
-- Stays factual and only references confirmed amenities`;
-
-    const airbnbResult = await model.generateContent(airbnbPrompt);
-    airbnbDescription = airbnbResult.response.text();
-  }
-
-  if (propertyData.include_social) {
-    const socialPrompt = `You are a social media expert creating Instagram/Facebook captions for Charleston real estate. Create 3 engaging captions.
-
-CRITICAL ACCURACY RULES:
-1. ONLY mention confirmed amenities - no invented features
-2. Use verified distances when mentioning landmarks
-3. Each caption should be 1-2 sentences
-4. Include relevant Charleston hashtags (e.g., #CharlestonRealEstate #LowcountryLiving)
-5. Make it shareable and visually appealing
-
-Property Data:
-- Address: ${propertyData.address || 'Address not provided'}
-- Type: ${propertyData.property_type}
-- Bedrooms: ${propertyData.bedrooms || 'Not specified'}
-- Bathrooms: ${propertyData.bathrooms || 'Not specified'}
-- Confirmed Amenities: ${propertyData.amenities.length > 0 ? propertyData.amenities.join(', ') : 'None specified'}
-
-${neighborhoodContext}
-
-${geocodingData.distances_to_landmarks && geocodingData.distances_to_landmarks.length > 0 ? `VERIFIED DISTANCES: ${geocodingData.distances_to_landmarks.map((d: any) => `${d.name} (${d.drive_time_minutes} min)`).join(', ')}
-` : ''}
-
-Create 3 separate captions (format as numbered list: 1., 2., 3.):
-1. First caption: Focus on location and lifestyle
-2. Second caption: Highlight key features/amenities
-3. Third caption: Emphasize unique selling points or neighborhood character
-
-Each caption should be 1-2 sentences with 3-5 relevant hashtags.`;
-
-    const socialResult = await model.generateContent(socialPrompt);
-    const socialText = socialResult.response.text();
-    
-    // Parse social captions with robust parsing
-    const parseSocialCaptions = (text: string): string[] => {
-      // Try numbered list first (1., 2., 3.)
-      const numbered = text.match(/\d+\.\s*[^\d]+/g);
-      if (numbered && numbered.length >= 2) {
-        return numbered.map(c => c.replace(/^\d+\.\s*/, '').trim()).slice(0, 3);
-      }
-      
-      // Try double newline
-      const doubleNewline = text.split(/\n\n+/).filter(c => c.trim().length > 20);
-      if (doubleNewline.length >= 2) {
-        return doubleNewline.map(c => c.trim()).slice(0, 3);
-      }
-      
-      // Fallback: split by single newline and filter
-      return text.split('\n')
-        .map(c => c.trim())
-        .filter(c => c.length > 20 && !c.match(/^(caption|post|social)/i))
-        .slice(0, 3);
-    };
-    
-    socialCaptions = parseSocialCaptions(socialText);
-  }
-
   return {
     mls_description: mlsDescription,
-    airbnb_description: airbnbDescription,
-    social_captions: socialCaptions,
+    airbnb_description: null,
+    social_captions: null,
   };
 }
 
@@ -845,7 +692,6 @@ async function factCheckDescription(
 ): Promise<number> {
   const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-  // Build verified distances list for fact-checking
   let verifiedDistancesText = '';
   if (geocodingData?.distances_to_landmarks && geocodingData.distances_to_landmarks.length > 0) {
     verifiedDistancesText = `\n\nVERIFIED DRIVING DISTANCES (Check if description matches these exactly):
@@ -853,7 +699,6 @@ ${geocodingData.distances_to_landmarks.map((d: any) => `- ${d.name}: ${d.drive_t
 
 CRITICAL: If the description mentions drive times or distances to these landmarks, they MUST match the verified times above. Any discrepancy reduces accuracy score.`;
 
-    // Check for distance mentions in description
     const descriptionLower = description.toLowerCase();
     const mentionedLandmarks = geocodingData.distances_to_landmarks.filter((d: any) => 
       descriptionLower.includes(d.name.toLowerCase())
@@ -904,3 +749,4 @@ Respond with just a number 0-100.`;
     return 75;
   }
 }
+
