@@ -313,6 +313,21 @@ export default function Landing() {
             AI powered; built for the Lowcountry
           </div>
 
+          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-400 mb-6">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-blue-400" />
+              <span>50+ agents</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+              <span>4.9 rating</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-green-400" />
+              <span>45 min saved per listing</span>
+            </div>
+          </div>
+
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 leading-tight tracking-tight">
             Create listing descriptions<br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">that sell homes faster</span>
@@ -326,7 +341,7 @@ export default function Landing() {
             Try free - no credit card required
           </p>
 
-          <div className="max-w-2xl mx-auto mb-10">
+          <div className="max-w-2xl mx-auto">
             <div className="relative bg-gray-800/60 backdrop-blur-sm border border-gray-700/50 rounded-2xl p-2 shadow-2xl shadow-blue-500/5">
               <div className="flex items-center gap-2 bg-gray-900/60 rounded-xl px-4 py-3">
                 <div className="flex-1">
@@ -351,21 +366,6 @@ export default function Landing() {
                   {generating ? 'Generating...' : 'Generate'}
                 </Button>
               </div>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-400">
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-blue-400" />
-              <span>50+ agents</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-              <span>4.9 rating</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-green-400" />
-              <span>45 min saved per listing</span>
             </div>
           </div>
         </section>
@@ -521,7 +521,7 @@ export default function Landing() {
                   Transform empty rooms into beautifully furnished spaces using AI. Choose from coastal modern, lowcountry traditional, minimalist, and contemporary styles.
                 </p>
 
-                <div className="space-y-4 mb-8">
+                <div className="space-y-4">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-green-500/20 rounded-full flex items-center justify-center flex-shrink-0">
                       <Check className="w-4 h-4 text-green-400" />
@@ -541,11 +541,6 @@ export default function Landing() {
                     <span className="text-gray-300">Staged listings sell 73% faster</span>
                   </div>
                 </div>
-
-                <button onClick={handlePricing} className="px-8 py-4 bg-amber-600 hover:bg-amber-700 rounded-xl font-semibold transition shadow-lg shadow-amber-600/20 flex items-center gap-2">
-                  See Staging Plans
-                  <ArrowRight className="w-5 h-5" />
-                </button>
               </div>
 
               <div className="relative">

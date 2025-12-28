@@ -9,10 +9,70 @@ import Dashboard from './pages/Dashboard';
 import Pricing from './pages/Pricing';
 import Account from './pages/Account';
 import { Loader2 } from 'lucide-react';
+import { supabase } from './lib/supabase';
 
 function Router() {
   const { user, loading } = useAuth();
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
+
+  // Handle OAuth callbacks and email confirmation
+  useEffect(() => {
+    const handleAuthCallback = async () => {
+      // Supabase automatically processes OAuth callbacks in URL hash fragments
+      // and email confirmation tokens in query parameters
+      
+      // Check for email confirmation or password reset in URL search params
+      const searchParams = new URLSearchParams(window.location.search);
+      const type = searchParams.get('type');
+      const token = searchParams.get('token');
+
+      // Check for OAuth error in hash (Supabase handles success automatically)
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const error = hashParams.get('error');
+      const errorDescription = hashParams.get('error_description');
+
+      if (error) {
+        // OAuth error - redirect to login
+        console.error('OAuth error:', errorDescription || error);
+        window.history.replaceState({}, '', '/login');
+        setCurrentPath('/login');
+        return;
+      }
+
+      // Handle email confirmation - Supabase will process this automatically
+      // via onAuthStateChange, we just need to clean up the URL
+      if (type === 'signup' && token) {
+        // Supabase processes this automatically, just redirect to dashboard
+        // The onAuthStateChange listener in AuthContext will handle the session
+        window.history.replaceState({}, '', '/dashboard');
+        setCurrentPath('/dashboard');
+        return;
+      }
+
+      // Handle password reset
+      if (type === 'recovery' && token) {
+        // Redirect to login with reset flag - the Login component will handle the token
+        window.history.replaceState({}, '', `/login?reset=true&token=${token}`);
+        setCurrentPath('/login');
+        return;
+      }
+
+      // Clean up OAuth hash fragments after Supabase processes them
+      // Supabase automatically processes hash fragments on page load
+      if (window.location.hash && (window.location.hash.includes('access_token') || window.location.hash.includes('error'))) {
+        // Wait a moment for Supabase to process, then clean up
+        setTimeout(() => {
+          if (window.location.hash) {
+            const newPath = user ? '/dashboard' : '/login';
+            window.history.replaceState({}, '', newPath);
+            setCurrentPath(newPath);
+          }
+        }, 500);
+      }
+    };
+
+    handleAuthCallback();
+  }, [user]);
 
   useEffect(() => {
     const handleLocationChange = () => {
