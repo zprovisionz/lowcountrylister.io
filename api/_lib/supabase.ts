@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL!;
+// Backend uses SUPABASE_URL (not VITE_SUPABASE_URL which is frontend-only)
+// Fallback to VITE_SUPABASE_URL for backward compatibility during migration
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 export function createServiceClient() {

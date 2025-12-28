@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getUserFromToken, createServiceClient } from './_lib/supabase.js';
 import { checkStagingStatus } from './_lib/staging-provider.js';
+import { logger } from './_lib/logger.js';
 
 export default async function handler(
   req: VercelRequest,
@@ -65,7 +66,7 @@ export default async function handler(
       });
     }
 
-    console.log('Checking status with provider...');
+    logger.info('Checking status with provider...');
     const providerStatus = await checkStagingStatus(
       queueEntry.provider_job_id,
       queueEntry.provider as 'reimagine' | 'virtualstagingai' | 'fallback'
@@ -144,7 +145,7 @@ export default async function handler(
       },
     });
   } catch (error) {
-    console.error('Status check error:', error);
+    logger.error('Status check error:', error);
     return res.status(500).json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error',

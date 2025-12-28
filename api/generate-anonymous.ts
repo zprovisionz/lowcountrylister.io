@@ -9,14 +9,34 @@ import { logger } from './_lib/logger.js';
 import { getCachedNeighborhood, setCachedNeighborhood } from './_lib/neighborhoodCache.js';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const MAX_ANONYMOUS_GENERATIONS = 3;
 
 /**
  * Generate preview snippet from full description (first 50 words)
+ * Attempts to end at sentence boundary when possible
  */
 function generatePreviewSnippet(description: string): string {
   const words = description.split(/\s+/).filter(word => word.length > 0);
   const previewWords = words.slice(0, 50);
-  return previewWords.join(' ') + (words.length > 50 ? '...' : '');
+  let preview = previewWords.join(' ');
+  
+  // Try to end at sentence boundary if we're close to 50 words
+  if (words.length > 50) {
+    // Look for sentence endings in the last 10 words
+    const lastWords = previewWords.slice(-10);
+    const lastText = lastWords.join(' ');
+    
+    // Find last sentence ending (., !, ?)
+    const sentenceEndMatch = lastText.match(/[.!?]\s+[A-Z]/);
+    if (sentenceEndMatch && sentenceEndMatch.index !== undefined) {
+      const sentenceEndIndex = preview.length - lastText.length + sentenceEndMatch.index + 1;
+      preview = preview.substring(0, sentenceEndIndex);
+    } else {
+      preview += '...';
+    }
+  }
+  
+  return preview;
 }
 
 export default async function handler(
@@ -56,20 +76,11 @@ export default async function handler(
     const hashedIP = hashIP(clientIP);
     const deviceFingerprint = generateDeviceFingerprint(req);
 
-    // Get generation count for this session
     const supabase = createServiceClient();
-    const { count: existingCount } = await supabase
-      .from('anonymous_generations')
-      .select('*', { count: 'exact', head: true })
-      .eq('session_id', sessionId)
-      .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
-
-    const generationCount = (existingCount || 0) + 1;
 
     logger.info('Anonymous generation request:', {
       address: data.address,
       sessionId: sessionId.substring(0, 8) + '...',
-      generationCount,
     });
 
     // Geocode address
@@ -120,13 +131,14 @@ export default async function handler(
     const previewSnippet = generatePreviewSnippet(descriptions.mls_description);
 
     // Store in anonymous_generations table
+    // Note: We insert first, then verify rate limit to prevent race conditions
     const { data: anonymousGeneration, error: insertError } = await supabase
       .from('anonymous_generations')
       .insert({
         session_id: sessionId,
         ip_address: hashedIP,
         device_fingerprint: deviceFingerprint,
-        generation_count: generationCount,
+        generation_count: 1, // Will be recalculated
         address: data.address,
         mls_description: descriptions.mls_description,
         preview_snippet: previewSnippet,
@@ -138,11 +150,46 @@ export default async function handler(
 
     if (insertError || !anonymousGeneration) {
       logger.error('Insert error:', insertError);
+      // Check if error is due to missing table (migration not run)
+      if (insertError?.message?.includes('does not exist') || insertError?.code === '42P01') {
+        return res.status(500).json({ 
+          error: 'Service configuration error. Please contact support.',
+          code: 'MIGRATION_REQUIRED'
+        });
+      }
       return res.status(500).json({ error: 'Failed to save generation' });
     }
 
-    // Set session cookie for client
-    res.setHeader('Set-Cookie', `anon_session=${sessionId}; Path=/; Max-Age=86400; SameSite=Lax; HttpOnly`);
+    // Verify rate limit again after insertion (atomic check)
+    // This prevents race conditions where multiple requests pass the initial check
+    const { count: finalCount } = await supabase
+      .from('anonymous_generations')
+      .select('*', { count: 'exact', head: true })
+      .eq('ip_address', hashedIP)
+      .eq('device_fingerprint', deviceFingerprint)
+      .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+
+    const finalGenerationCount = finalCount || 0;
+
+    // If we exceeded the limit, delete this generation and return error
+    if (finalGenerationCount > MAX_ANONYMOUS_GENERATIONS) {
+      await supabase
+        .from('anonymous_generations')
+        .delete()
+        .eq('id', anonymousGeneration.id);
+
+      return res.status(429).json({
+        error: `You've reached the limit of ${MAX_ANONYMOUS_GENERATIONS} free generations. Sign up for unlimited access.`,
+        code: 'RATE_LIMIT_EXCEEDED',
+        count: finalGenerationCount - 1,
+        remaining: 0,
+      });
+    }
+
+    // Set session cookie for client (HttpOnly removed to allow JavaScript access for session linking)
+    const isProduction = process.env.NODE_ENV === 'production';
+    const secureFlag = isProduction ? '; Secure' : '';
+    res.setHeader('Set-Cookie', `anon_session=${sessionId}; Path=/; Max-Age=86400; SameSite=Lax${secureFlag}`);
 
     // Return response with both preview and full description
     // Frontend will only show preview to anonymous users
@@ -155,7 +202,7 @@ export default async function handler(
         preview_snippet: previewSnippet,
         confidence_score: mlsConfidence,
         confidence_level: mlsConfidence >= 80 ? 'high' : 'medium',
-        remaining_generations: Math.max(0, 3 - generationCount),
+        remaining_generations: Math.max(0, MAX_ANONYMOUS_GENERATIONS - finalGenerationCount),
       },
     });
   } catch (error) {

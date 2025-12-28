@@ -87,7 +87,14 @@ export default function Landing() {
             }, 2000);
             return;
           }
-          throw new Error(result.error || 'Invalid response from server');
+          // Check for migration error
+          if (result.code === 'MIGRATION_REQUIRED') {
+            setGenerationError('Service is being updated. Please try again in a few moments.');
+            return;
+          }
+          // Provide user-friendly error messages
+          const errorMessage = result.error || 'Failed to generate listing. Please try again.';
+          throw new Error(errorMessage);
         }
 
         // Calculate authenticity for display
@@ -303,7 +310,7 @@ export default function Landing() {
         <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-20 pb-12 text-center">
           <div className="mb-6 inline-flex items-center gap-2 px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-full text-blue-300 text-sm font-medium backdrop-blur-sm">
             <Sparkles className="w-4 h-4" />
-            AI trained on Charleston neighborhoods
+            AI powered; built for the Lowcountry
           </div>
 
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 leading-tight tracking-tight">
@@ -347,20 +354,10 @@ export default function Landing() {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-6">
-            <button
-              onClick={handleVirtualStaging}
-              className="px-6 py-3 bg-amber-600 hover:bg-amber-700 rounded-lg transition font-semibold flex items-center gap-2 shadow-lg shadow-amber-600/20"
-            >
-              <Image className="w-5 h-5" />
-              Try Virtual Staging
-            </button>
-          </div>
-
           <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-400">
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-blue-400" />
-              <span>200+ agents</span>
+              <span>50+ agents</span>
             </div>
             <div className="flex items-center gap-2">
               <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />

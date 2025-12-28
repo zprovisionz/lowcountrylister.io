@@ -224,9 +224,14 @@ export default function ResultsDisplay({
             </div>
             <div className="flex gap-3">
               <button
-                onClick={() => copyToClipboard(mlsDescription, 'mls')}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800"
+                onClick={() => {
+                  // For anonymous users, copy only the preview snippet
+                  const textToCopy = isAnonymous && previewSnippet ? previewSnippet : mlsDescription;
+                  copyToClipboard(textToCopy, 'mls');
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label={copiedIndex === 'mls' ? 'MLS description copied to clipboard' : 'Copy MLS description to clipboard'}
+                disabled={isAnonymous && !previewSnippet}
               >
                 {copiedIndex === 'mls' ? (
                   <>

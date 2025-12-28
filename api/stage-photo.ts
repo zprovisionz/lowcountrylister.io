@@ -10,6 +10,7 @@ import {
 import { StagePhotoSchema } from './_lib/validation.js';
 import { analyzePhotoForStaging } from './_lib/vision.js';
 import { requestStaging } from './_lib/staging-provider.js';
+import { logger } from './_lib/logger.js';
 
 /**
  * Background processing function for staging jobs
@@ -28,7 +29,7 @@ async function processStagingJob(queueId: string): Promise<void> {
       .maybeSingle();
 
     if (fetchError || !queueEntry) {
-      console.error(`Queue entry ${queueId} not found or already processed`);
+      logger.error(`Queue entry ${queueId} not found or already processed`);
       return;
     }
 
@@ -38,7 +39,7 @@ async function processStagingJob(queueId: string): Promise<void> {
       .update({ status: 'processing' })
       .eq('id', queueId);
 
-    console.log(`Processing staging job ${queueId}...`);
+    logger.info(`Processing staging job ${queueId}...`);
 
     // Request staging from provider
     const stagingResponse = await requestStaging({
@@ -69,9 +70,9 @@ async function processStagingJob(queueId: string): Promise<void> {
       })
       .eq('id', queueId);
 
-    console.log(`Staging job ${queueId} submitted to provider ${stagingResponse.provider}`);
+    logger.info(`Staging job ${queueId} submitted to provider ${stagingResponse.provider}`);
   } catch (error) {
-    console.error(`Error processing staging job ${queueId}:`, error);
+    logger.error(`Error processing staging job ${queueId}:`, error);
     await supabase
       .from('staging_queue')
       .update({
@@ -142,7 +143,7 @@ export default async function handler(
     // We'll use the provided photo_url
     const photoUrl = data.photo_url;
 
-    console.log('Analyzing photo suitability...');
+    logger.info('Analyzing photo suitability...');
     const analysis = await analyzePhotoForStaging(photoUrl);
 
     if (!analysis.is_suitable || analysis.confidence < 60) {
@@ -175,7 +176,7 @@ export default async function handler(
       .single();
 
     if (insertError || !queueEntry) {
-      console.error('Queue insert error:', insertError);
+      logger.error('Queue insert error:', insertError);
       return res.status(500).json({ error: 'Failed to create staging queue entry' });
     }
 
@@ -185,7 +186,7 @@ export default async function handler(
     // Start background processing (non-blocking)
     // Process staging asynchronously
     processStagingJob(queueEntry.id).catch((error) => {
-      console.error(`Background processing error for queue ${queueEntry.id}:`, error);
+      logger.error(`Background processing error for queue ${queueEntry.id}:`, error);
     });
 
     return res.status(200).json({
@@ -197,7 +198,7 @@ export default async function handler(
       },
     });
   } catch (error) {
-    console.error('Staging error:', error);
+    logger.error('Staging error:', error);
     return res.status(500).json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error',

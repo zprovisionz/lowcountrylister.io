@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createServiceClient } from './_lib/supabase.js';
 import { checkStagingStatus } from './_lib/staging-provider.js';
+import { logger } from './_lib/logger.js';
 
 /**
  * Cron job endpoint to process pending staging queue entries
@@ -31,7 +32,7 @@ export default async function handler(
       .limit(10);
 
     if (fetchError) {
-      console.error('Error fetching pending jobs:', fetchError);
+      logger.error('Error fetching pending jobs:', fetchError);
       return res.status(500).json({ error: 'Failed to fetch pending jobs' });
     }
 
@@ -43,7 +44,7 @@ export default async function handler(
       });
     }
 
-    console.log(`Processing ${pendingJobs.length} pending staging jobs...`);
+    logger.info(`Processing ${pendingJobs.length} pending staging jobs...`);
 
     // Process each pending job
     const results = await Promise.allSettled(
@@ -89,7 +90,7 @@ export default async function handler(
 
           return { id: job.id, status: 'processing', provider: stagingResponse.provider };
         } catch (error) {
-          console.error(`Error processing job ${job.id}:`, error);
+          logger.error(`Error processing job ${job.id}:`, error);
           await supabase
             .from('staging_queue')
             .update({
@@ -173,7 +174,7 @@ export default async function handler(
               }
             }
           } catch (error) {
-            console.error(`Error checking status for job ${job.id}:`, error);
+            logger.error(`Error checking status for job ${job.id}:`, error);
           }
         })
       );
@@ -189,7 +190,7 @@ export default async function handler(
       failed,
     });
   } catch (error) {
-    console.error('Cron job error:', error);
+    logger.error('Cron job error:', error);
     return res.status(500).json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error',
