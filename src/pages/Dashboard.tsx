@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, Generation } from '../lib/supabase';
-import { Waves, LogOut, FileText, Calendar, MapPin, Plus, Settings, CreditCard, X, Copy, Check, Edit3, ChevronDown } from 'lucide-react';
+import { LogOut, FileText, Calendar, MapPin, Plus, Settings, CreditCard, X, Copy, Check, Edit3, ChevronDown } from 'lucide-react';
 import { NotificationContainer, NotificationType } from '../components/Notification';
 import { logger } from '../lib/logger';
 import { SkeletonList } from '../components/ui/Skeleton';

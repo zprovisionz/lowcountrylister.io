@@ -28,7 +28,7 @@ interface ResultsDisplayProps {
   generationId?: string;
   onUpgradeClick: () => void;
   stagedImages?: StagedImage[];
-  subscriptionTier?: 'free' | 'starter' | 'pro' | 'pro_plus';
+  subscriptionTier?: 'free' | 'starter' | 'pro' | 'pro_plus' | 'team';
 }
 
 export default function ResultsDisplay({

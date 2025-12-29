@@ -20,18 +20,38 @@ export default async function handler(
     const supabase = createServiceClient();
     const days = parseInt(req.query.days as string) || 30;
 
-    // Get user's generations (and team generations if applicable)
-    const { data: generations } = await supabase
+    // Get user's team IDs for shared generation access
+    const { data: teams } = await supabase
+      .from('team_members')
+      .select('team_id')
+      .eq('user_id', user.id);
+
+    const teamIds = teams?.map(t => t.team_id) || [];
+
+    // Build query: user's own generations
+    const { data: userGenerations } = await supabase
       .from('generations')
       .select('id, address, created_at, team_id, is_shared')
-      .or(`user_id.eq.${user.id},and(is_shared.eq.true,team_id.in.(${
-        (await supabase
-          .from('team_members')
-          .select('team_id')
-          .eq('user_id', user.id))
-          .data?.map(t => t.team_id).join(',') || ''
-      }))`)
+      .eq('user_id', user.id)
       .gte('created_at', new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString());
+
+    // If user has teams, also fetch shared team generations
+    let teamGenerations: any[] = [];
+    if (teamIds.length > 0) {
+      const { data } = await supabase
+        .from('generations')
+        .select('id, address, created_at, team_id, is_shared')
+        .in('team_id', teamIds)
+        .eq('is_shared', true)
+        .gte('created_at', new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString());
+      teamGenerations = data || [];
+    }
+
+    // Combine user and team generations, removing duplicates by ID
+    const allGenerationsMap = new Map<string, any>();
+    (userGenerations || []).forEach(g => allGenerationsMap.set(g.id, g));
+    teamGenerations.forEach(g => allGenerationsMap.set(g.id, g));
+    const generations = { data: Array.from(allGenerationsMap.values()) };
 
     const generationIds = generations?.map(g => g.id) || [];
 

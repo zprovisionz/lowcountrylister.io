@@ -5,6 +5,7 @@ export interface UserProfile {
   generations_this_month: number;
   staging_credits_used_this_month: number;
   staging_credits_bonus: number;
+  total_stagings_generated: number;
   billing_period_start: string;
   last_reset_date: string;
   stripe_customer_id?: string;

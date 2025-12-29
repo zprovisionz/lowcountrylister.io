@@ -35,7 +35,7 @@ interface ReviewStepProps {
   detectedNeighborhood: NeighborhoodDetectionResult | null;
   onEditStep: (stepIndex: number) => void;
   amenityLabels: Record<string, string>;
-  subscriptionTier?: 'free' | 'starter' | 'pro' | 'pro_plus';
+  subscriptionTier?: 'free' | 'starter' | 'pro' | 'pro_plus' | 'team';
   onStagePhoto?: (photoIndex: number, style: string, roomType: string) => Promise<void>;
   stagingInProgress?: boolean;
   onUpgradeClick?: () => void;
@@ -71,7 +71,7 @@ export default function ReviewStep({
     ...customAmenities,
   ];
 
-  const canStage = subscriptionTier === 'pro' || subscriptionTier === 'pro_plus';
+  const canStage = subscriptionTier === 'pro' || subscriptionTier === 'pro_plus' || subscriptionTier === 'team';
   const isStarter = subscriptionTier === 'starter';
   const isFree = subscriptionTier === 'free';
 
@@ -339,7 +339,7 @@ export default function ReviewStep({
                 <h4 className="font-medium text-white">Stage Your Photos</h4>
               </div>
               <span className="px-3 py-1 bg-blue-500/20 text-blue-300 text-sm rounded-full border border-blue-500/30">
-                {subscriptionTier === 'pro' ? 'Pro' : 'Pro+'}
+                {subscriptionTier === 'pro' ? 'Pro' : subscriptionTier === 'team' ? 'Team' : 'Pro+'}
               </span>
             </div>
 

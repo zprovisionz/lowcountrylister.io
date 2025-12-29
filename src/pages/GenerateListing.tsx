@@ -49,6 +49,7 @@ export default function GenerateListing() {
   const [showMenu, setShowMenu] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const [activeTab, setActiveTab] = useState<GenerateTab>('quick');
 
   const [currentStep, setCurrentStep] = useState(0);
 

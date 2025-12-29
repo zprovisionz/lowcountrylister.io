@@ -105,18 +105,24 @@ export function canStage(profile: UserProfile, requestedCredits: number = 1): {
 export async function incrementGenerationCount(userId: string): Promise<void> {
   const supabase = createServiceClient();
 
-  await supabase.rpc('increment', {
+  const { error } = await supabase.rpc('increment', {
     table_name: 'user_profiles',
     row_id: userId,
     column_name: 'generations_this_month',
-  }).catch(() => {
-    supabase
-      .from('user_profiles')
-      .update({
-        generations_this_month: supabase.raw('generations_this_month + 1'),
-      })
-      .eq('id', userId);
   });
+
+  if (error) {
+    // Fallback to manual increment if RPC fails
+    const profile = await getUserProfile(userId);
+    if (profile) {
+      await supabase
+        .from('user_profiles')
+        .update({
+          generations_this_month: profile.generations_this_month + 1,
+        })
+        .eq('id', userId);
+    }
+  }
 }
 
 export async function incrementStagingCount(

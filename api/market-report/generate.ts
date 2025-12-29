@@ -96,7 +96,7 @@ export default async function handler(
 
 Median Sold Price: $${medianPrice.toLocaleString()}
 Average Price per Sqft: $${avgPricePerSqft.toFixed(2)}
-Average Days on Market: ${avgPricePerSqft.toFixed(0)} days
+Average Days on Market: ${avgDaysOnMarket.toFixed(0)} days
 Recent Sales: ${soldComps.length} properties
 
 Focus on market trends, buyer demand, and what sellers should know. Use Charleston real estate terminology.`;

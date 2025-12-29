@@ -225,8 +225,8 @@ export default async function handler(
     if (errorMessage.includes('does not exist') || errorMessage.includes('42P01')) {
       userFriendlyError = 'Database table missing. Please run the migration to create the anonymous_generations table.';
       errorCode = 'MIGRATION_REQUIRED';
-    } else if (errorMessage.includes('API key') || errorMessage.includes('GEMINI')) {
-      userFriendlyError = 'API key error. Please check your GEMINI_API_KEY in environment variables.';
+    } else if (errorMessage.includes('API key') || errorMessage.includes('OPENAI')) {
+      userFriendlyError = 'API key error. Please check your OPENAI_API_KEY in environment variables.';
       errorCode = 'API_KEY_ERROR';
     } else if (errorMessage.includes('rate limit') || errorMessage.includes('quota')) {
       userFriendlyError = 'API rate limit exceeded. Please try again later.';
@@ -695,7 +695,7 @@ CRITICAL ACCURACY RULES (MANDATORY - VIOLATIONS REDUCE CONFIDENCE):
 6. Use Charleston-specific terminology (piazza for porch, single house, etc.)
 7. Reference actual distances to landmarks when provided in geocoding data
 8. Be engaging but factual - accuracy is paramount
-9. 350-450 words for MLS descriptions
+9. 300-500 words for MLS descriptions
 10. Include emotional appeal while staying truthful
 11. Study the few-shot examples below to understand authentic Charleston real estate writing style, terminology, and persuasive techniques
 
@@ -755,7 +755,7 @@ Write an MLS description that sells the lifestyle and location while staying fac
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: 'You are an expert Charleston, SC real estate copywriter. Write compelling, accurate listing descriptions.' },
-        { role: 'user', content: `${systemPrompt}\n\nIMPORTANT: The description must be 350-450 words. Regenerate to meet this requirement.` }
+        { role: 'user', content: `${systemPrompt}\n\nIMPORTANT: The description must be 300-500 words. Regenerate to meet this requirement.` }
       ],
       max_tokens: 1500,
       temperature: 0.7,

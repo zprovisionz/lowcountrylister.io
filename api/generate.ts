@@ -695,7 +695,7 @@ CRITICAL ACCURACY RULES (MANDATORY - VIOLATIONS REDUCE CONFIDENCE):
 6. Use Charleston-specific terminology (piazza for porch, single house, etc.)
 7. Reference actual distances to landmarks when provided in geocoding data
 8. Be engaging but factual - accuracy is paramount
-9. 350-450 words for MLS descriptions
+9. 300-500 words for MLS descriptions
 10. Include emotional appeal while staying truthful
 11. Study the few-shot examples below to understand authentic Charleston real estate writing style, terminology, and persuasive techniques
 
@@ -742,7 +742,7 @@ Write an MLS description that sells the lifestyle and location while staying fac
 
   let mlsDescription = response.choices[0]?.message?.content || '';
 
-  // Validate MLS description length (industry standard: 350-450 words)
+  // Validate MLS description length (industry standard: 300-500 words)
   const validateMLSLength = (description: string): boolean => {
     const wordCount = description.split(/\s+/).filter(word => word.length > 0).length;
     return wordCount >= 300 && wordCount <= 500;
@@ -751,13 +751,13 @@ Write an MLS description that sells the lifestyle and location while staying fac
   // Regenerate if length is not within range
   if (!validateMLSLength(mlsDescription)) {
     const wordCount = mlsDescription.split(/\s+/).filter(word => word.length > 0).length;
-    logger.warn(`MLS description length ${wordCount} words, regenerating to meet 350-450 word requirement`);
+    logger.warn(`MLS description length ${wordCount} words, regenerating to meet 300-500 word requirement`);
     
     const retryResponse = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: 'You are an expert Charleston, SC real estate copywriter.' },
-        { role: 'user', content: `${systemPrompt}\n\nIMPORTANT: The description must be exactly 350-450 words. Regenerate to meet this requirement.` }
+        { role: 'user', content: `${systemPrompt}\n\nIMPORTANT: The description must be exactly 300-500 words. Regenerate to meet this requirement.` }
       ],
       max_tokens: 1500,
       temperature: 0.7,

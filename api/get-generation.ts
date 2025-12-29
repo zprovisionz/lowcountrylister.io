@@ -48,10 +48,6 @@ export default async function handler(
       return res.status(500).json({ error: 'Failed to fetch generation' });
     }
 
-    if (!generation) {
-      return res.status(404).json({ error: 'Generation not found' });
-    }
-
     // Also check anonymous_generations if not found in main table
     // (for cases where user just signed up and generation was linked)
     if (!generation) {
@@ -86,6 +82,9 @@ export default async function handler(
           },
         });
       }
+
+      // Neither main generation nor anonymous generation found
+      return res.status(404).json({ error: 'Generation not found' });
     }
 
     return res.status(200).json({
