@@ -1,6 +1,6 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
 
 export interface RoomAnalysis {
   is_suitable: boolean;
@@ -13,60 +13,45 @@ export async function analyzePhotoForStaging(
   photoUrl: string
 ): Promise<RoomAnalysis> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
-    const prompt = `Analyze this real estate photo and determine if it's suitable for virtual staging.
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: `Analyze this real estate photo for virtual staging suitability.
 
 Rules:
 - ONLY interior rooms that are empty or sparsely furnished are suitable
-- Exterior photos, landscaping, or architectural exteriors are NOT suitable
+- Exterior photos are NOT suitable
 - Already fully furnished rooms are NOT suitable
-- Photos with people, animals, or major clutter are NOT suitable
 
 Respond in JSON format:
-{
-  "is_suitable": boolean,
-  "room_type": "living_room" | "bedroom" | "kitchen" | "dining_room" | "bathroom" | "office" | "other" | null,
-  "confidence": 0-100,
-  "reason": "brief explanation"
-}`;
+{"is_suitable": boolean, "room_type": "living_room"|"bedroom"|"kitchen"|"dining_room"|"bathroom"|"office"|"other"|null, "confidence": 0-100, "reason": "brief explanation"}`
+            },
+            {
+              type: 'image_url',
+              image_url: { url: photoUrl }
+            }
+          ]
+        }
+      ],
+      max_tokens: 200,
+    });
 
-    const imagePart = {
-      inlineData: {
-        data: await fetchImageAsBase64(photoUrl),
-        mimeType: 'image/jpeg',
-      },
-    };
-
-    const result = await model.generateContent([prompt, imagePart]);
-    const response = result.response.text();
-
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    const text = response.choices[0]?.message?.content || '';
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      const analysis = JSON.parse(jsonMatch[0]);
-      return analysis;
+      return JSON.parse(jsonMatch[0]);
     }
 
-    return {
-      is_suitable: false,
-      confidence: 0,
-      reason: 'Unable to analyze photo',
-    };
+    return { is_suitable: false, confidence: 0, reason: 'Unable to analyze photo' };
   } catch (error) {
     console.error('Vision API error:', error);
-    return {
-      is_suitable: false,
-      confidence: 0,
-      reason: 'Error analyzing photo',
-    };
+    return { is_suitable: false, confidence: 0, reason: 'Error analyzing photo' };
   }
-}
-
-async function fetchImageAsBase64(url: string): Promise<string> {
-  const response = await fetch(url);
-  const buffer = await response.arrayBuffer();
-  const base64 = Buffer.from(buffer).toString('base64');
-  return base64;
 }
 
 export async function extractPropertyFeatures(photoUrls: string[]): Promise<{
@@ -78,43 +63,36 @@ export async function extractPropertyFeatures(photoUrls: string[]): Promise<{
       return { features: [], confidence: 0 };
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const imageContents = photoUrls.slice(0, 4).map(url => ({
+      type: 'image_url' as const,
+      image_url: { url }
+    }));
 
-    const prompt = `Analyze these real estate photos and identify key features visible in the images.
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: `Analyze these real estate photos. List ONLY clearly visible features.
 
-Be CONSERVATIVE - only mention features you can clearly see.
+Categories: flooring, kitchen features, bathroom features, architectural details, windows, outdoor features.
 
-Categories to consider:
-- Flooring (hardwood, tile, carpet, etc.)
-- Kitchen features (granite counters, stainless appliances, island, etc.)
-- Bathroom features (tiled shower, double vanity, etc.)
-- Architectural details (crown molding, coffered ceilings, exposed beams, etc.)
-- Windows and natural light
-- Built-ins and storage
-- Outdoor features visible (deck, patio, pool, etc.)
+Return JSON: {"features": ["feature1", "feature2"], "confidence": 0-100}`
+            },
+            ...imageContents
+          ]
+        }
+      ],
+      max_tokens: 300,
+    });
 
-Return JSON array of features:
-{
-  "features": ["feature1", "feature2", ...],
-  "confidence": 0-100
-}`;
-
-    const imageParts = await Promise.all(
-      photoUrls.slice(0, 5).map(async (url) => ({
-        inlineData: {
-          data: await fetchImageAsBase64(url),
-          mimeType: 'image/jpeg',
-        },
-      }))
-    );
-
-    const result = await model.generateContent([prompt, ...imageParts]);
-    const response = result.response.text();
-
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    const text = response.choices[0]?.message?.content || '';
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      const analysis = JSON.parse(jsonMatch[0]);
-      return analysis;
+      return JSON.parse(jsonMatch[0]);
     }
 
     return { features: [], confidence: 50 };

@@ -9,7 +9,8 @@ import Alert from '../components/ui/Alert';
 interface PricingTier {
   name: string;
   price: number;
-  tier: 'free' | 'starter' | 'pro' | 'pro_plus';
+  priceAnnual?: number;
+  tier: 'free' | 'starter' | 'pro' | 'pro_plus' | 'team';
   generations: string;
   stagingCredits: number;
   features: string[];
@@ -17,6 +18,7 @@ interface PricingTier {
   popular?: boolean;
   icon: React.ElementType;
   priceId?: string;
+  priceAnnualId?: string;
 }
 
 const tiers: PricingTier[] = [
@@ -24,13 +26,14 @@ const tiers: PricingTier[] = [
     name: 'Free',
     price: 0,
     tier: 'free',
-    generations: '3 per month',
+    generations: '10 per month',
     stagingCredits: 0,
     features: [
-      '3 listing descriptions per month',
+      '10 listing descriptions per month',
       'MLS format included',
-      'Basic property features',
+      'Basic analytics',
       'No virtual staging',
+      'No bulk generation',
       'Community support',
     ],
     cta: 'Get Started',
@@ -38,60 +41,90 @@ const tiers: PricingTier[] = [
   },
   {
     name: 'Starter',
-    price: 10,
+    price: 15,
+    priceAnnual: 144,
     tier: 'starter',
-    generations: '50 per month',
-    stagingCredits: 3,
+    generations: '100 per month',
+    stagingCredits: 10,
     features: [
-      '50 listing descriptions per month',
-      'MLS + Airbnb formats',
-      'Social media captions',
-      '3 virtual staging credits',
-      'AI photo analysis',
+      '100 listing descriptions per month',
+      'All formats (MLS, Airbnb, Social)',
+      '10 virtual staging credits/month',
+      'Bulk CSV (10 rows/job, 2 jobs/day)',
+      'Basic analytics',
       'Email support',
+      '$0.75 overage per generation/staging',
     ],
     cta: 'Start Free Trial',
     icon: Zap,
     priceId: import.meta.env.VITE_STRIPE_STARTER_PRICE_ID,
+    priceAnnualId: import.meta.env.VITE_STRIPE_STARTER_ANNUAL_PRICE_ID,
   },
   {
     name: 'Pro',
-    price: 19,
+    price: 29,
+    priceAnnual: 278,
     tier: 'pro',
     generations: 'Unlimited',
-    stagingCredits: 15,
+    stagingCredits: 30,
     features: [
       'Unlimited listing descriptions',
       'All formats included',
-      '15 virtual staging credits per month',
-      'Advanced AI photo analysis',
-      'Neighborhood insights',
+      '30 virtual staging credits/month',
+      'Bulk CSV (50 rows/job, 10 jobs/day)',
+      'Full analytics dashboard',
+      'Market reports & comps',
       'Priority email support',
-      'Download history',
+      '$5 per 10 staging credits overage',
     ],
     cta: 'Go Pro',
     icon: Crown,
     popular: true,
     priceId: import.meta.env.VITE_STRIPE_PRO_PRICE_ID,
+    priceAnnualId: import.meta.env.VITE_STRIPE_PRO_ANNUAL_PRICE_ID,
   },
   {
     name: 'Pro+',
-    price: 29,
+    price: 49,
+    priceAnnual: 470,
     tier: 'pro_plus',
     generations: 'Unlimited',
-    stagingCredits: 50,
+    stagingCredits: 100,
     features: [
       'Everything in Pro',
-      '50 virtual staging credits per month',
+      '100 virtual staging credits/month',
+      'Bulk CSV (200 rows/job, unlimited)',
+      'Team features access',
       'Purchase additional staging packs',
-      'White-glove onboarding',
-      'Dedicated account manager',
-      'Priority phone support',
-      'API access (coming soon)',
+      'Dedicated support channel',
+      '$5 per 10 staging credits overage',
     ],
     cta: 'Get Pro+',
     icon: Crown,
     priceId: import.meta.env.VITE_STRIPE_PRO_PLUS_PRICE_ID,
+    priceAnnualId: import.meta.env.VITE_STRIPE_PRO_PLUS_ANNUAL_PRICE_ID,
+  },
+  {
+    name: 'Team',
+    price: 99,
+    priceAnnual: 950,
+    tier: 'team',
+    generations: 'Unlimited shared',
+    stagingCredits: 150,
+    features: [
+      'Everything in Pro+',
+      'Unlimited shared generations',
+      '150 shared staging credits/month',
+      'Multi-user access & permissions',
+      'Team dashboard & branding',
+      'Shared analytics & reports',
+      'Dedicated account manager',
+      'Priority phone support',
+    ],
+    cta: 'Contact Sales',
+    icon: Crown,
+    priceId: import.meta.env.VITE_STRIPE_TEAM_PRICE_ID,
+    priceAnnualId: import.meta.env.VITE_STRIPE_TEAM_ANNUAL_PRICE_ID,
   },
 ];
 
@@ -100,7 +133,7 @@ export default function Pricing() {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState('');
 
-  const handleSubscribe = async (tier: PricingTier) => {
+  const handleSubscribe = async (tier: PricingTier, annual: boolean = false) => {
     if (!user) {
       window.history.pushState({}, '', '/login');
       window.dispatchEvent(new PopStateEvent('popstate'));
@@ -111,7 +144,14 @@ export default function Pricing() {
       return;
     }
 
-    if (!tier.priceId) {
+    if (tier.tier === 'team') {
+      // For Team tier, show contact form or redirect
+      window.location.href = 'mailto:sales@lowcountrylistings.ai?subject=Team Plan Inquiry';
+      return;
+    }
+
+    const priceId = annual ? tier.priceAnnualId : tier.priceId;
+    if (!priceId) {
       setError('Pricing not configured. Please contact support.');
       return;
     }
@@ -136,7 +176,7 @@ export default function Pricing() {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          price_id: tier.priceId,
+          price_id: priceId,
           success_url: `${window.location.origin}/dashboard?checkout=success`,
           cancel_url: `${window.location.origin}/pricing?checkout=cancel`,
         }),
@@ -201,7 +241,7 @@ export default function Pricing() {
           </div>
         )}
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8 mb-16">
           {tiers.map((tier) => {
             const Icon = tier.icon;
             const isCurrentPlan = currentTier === tier.tier;
@@ -233,6 +273,12 @@ export default function Pricing() {
                     <span className="text-5xl font-bold text-white">${tier.price}</span>
                     <span className="text-gray-400">/month</span>
                   </div>
+                  {tier.priceAnnual && (
+                    <div className="mt-2 text-sm text-gray-400">
+                      <span>${tier.priceAnnual}/year</span>
+                      <span className="ml-2 text-blue-400">Save 20%</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2 mb-6">
@@ -257,17 +303,31 @@ export default function Pricing() {
                   ))}
                 </ul>
 
-                <Button
-                  onClick={() => handleSubscribe(tier)}
-                  disabled={loading !== null || isCurrentPlan}
-                  isLoading={loading === tier.tier}
-                  variant={tier.popular ? 'primary' : 'secondary'}
-                  fullWidth
-                  size="lg"
-                  aria-label={isCurrentPlan ? `Current plan: ${tier.name}` : `Subscribe to ${tier.name} plan`}
-                >
-                  {isCurrentPlan ? 'Current Plan' : tier.cta}
-                </Button>
+                <div className="space-y-2">
+                  <Button
+                    onClick={() => handleSubscribe(tier, false)}
+                    disabled={loading !== null || isCurrentPlan}
+                    isLoading={loading === tier.tier}
+                    variant={tier.popular ? 'primary' : 'secondary'}
+                    fullWidth
+                    size="lg"
+                    aria-label={isCurrentPlan ? `Current plan: ${tier.name}` : `Subscribe to ${tier.name} plan`}
+                  >
+                    {isCurrentPlan ? 'Current Plan' : tier.cta}
+                  </Button>
+                  {tier.priceAnnual && tier.priceAnnualId && tier.tier !== 'team' && (
+                    <Button
+                      onClick={() => handleSubscribe(tier, true)}
+                      disabled={loading !== null || isCurrentPlan}
+                      variant="ghost"
+                      fullWidth
+                      size="sm"
+                      aria-label={`Subscribe to ${tier.name} annual plan`}
+                    >
+                      Save 20% with Annual
+                    </Button>
+                  )}
+                </div>
               </div>
             );
           })}

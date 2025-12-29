@@ -1,12 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Waves, ArrowRight, Sparkles, MapPin, FileText, Image, Clock, Zap, Check, Crown, Star, Users, Loader2, Settings } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import AddressAutocompleteInput from '../components/AddressAutocompleteInput';
 import ResultsDisplay from '../components/ResultsDisplay';
-import GenerationProgress from '../components/GenerationProgress';
 import Alert from '../components/ui/Alert';
 import Button from '../components/ui/Button';
 import StructuredData from '../components/StructuredData';
+import Navigation from '../components/Navigation';
 import { supabase } from '../lib/supabase';
 import { apiCall, parseApiError, AppError } from '../lib/errorHandler';
 import { neighborhoodService } from '../services/neighborhoodService';
@@ -32,7 +32,11 @@ export default function Landing() {
     };
   } | null>(null);
 
-  const handleGetStarted = async () => {
+  // Refs for auto-generation
+  const previousAddress = useRef<string>('');
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+
+  const handleGenerate = async () => {
     if (!address.trim()) return;
 
     setGenerating(true);
@@ -94,6 +98,7 @@ export default function Landing() {
           }
           // Provide user-friendly error messages
           const errorMessage = result.error || 'Failed to generate listing. Please try again.';
+          console.error('Generation error details:', result);
           throw new Error(errorMessage);
         }
 
@@ -242,9 +247,48 @@ export default function Landing() {
   };
 
   const handleSignIn = () => {
+    // Store generationId in sessionStorage before redirecting to login
+    if (results?.generationId) {
+      sessionStorage.setItem('pendingGenerationId', results.generationId);
+    }
     window.history.pushState({}, '', '/login');
     window.dispatchEvent(new PopStateEvent('popstate'));
   };
+
+  // Reset results when address changes significantly
+  useEffect(() => {
+    if (address !== previousAddress.current && previousAddress.current !== '') {
+      setResults(null);
+      setGenerationError(null);
+    }
+    previousAddress.current = address;
+  }, [address]);
+
+  // Auto-generate when a valid Charleston address is detected
+  useEffect(() => {
+    const trimmed = address.trim();
+    const isValid = trimmed.length > 30 && (
+      trimmed.toLowerCase().includes('charleston') ||
+      trimmed.toLowerCase().includes(', sc') ||
+      trimmed.toLowerCase().includes('south carolina')
+    );
+
+    if (isValid && !generating && !results) {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+
+      debounceTimer.current = setTimeout(() => {
+        handleGenerate();
+      }, 600);
+
+      return () => {
+        if (debounceTimer.current) {
+          clearTimeout(debounceTimer.current);
+        }
+      };
+    }
+  }, [address, generating, results]);
 
   const handleDashboard = () => {
     window.history.pushState({}, '', '/dashboard');
@@ -273,76 +317,55 @@ export default function Landing() {
       <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-blue-500/10 to-transparent"></div>
       <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-500"></div>
 
-      <header className="relative z-10 border-b border-gray-800/50 bg-gray-900/80 backdrop-blur-md sticky top-0">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Waves className="w-8 h-8 text-blue-400" />
-            <span className="text-lg font-bold text-white">Lowcountry Listings AI</span>
-          </div>
-          <nav className="hidden md:flex items-center gap-8 text-sm text-gray-300">
-            <a href="#features" className="hover:text-white transition">Features</a>
-            <button onClick={handleVirtualStaging} className="hover:text-white transition">Virtual Staging</button>
-            <button onClick={handlePricing} className="hover:text-white transition">Pricing</button>
-          </nav>
-          <div className="flex items-center gap-3">
-            {user ? (
-              <>
-                <button onClick={handleDashboard} className="px-4 py-2 text-gray-300 hover:text-white transition text-sm font-medium">
-                  Dashboard
-                </button>
-                <button
-                  onClick={() => { window.history.pushState({}, '', '/generate'); window.dispatchEvent(new PopStateEvent('popstate')); }}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition text-sm font-semibold"
-                >
-                  Generate
-                </button>
-              </>
-            ) : (
-              <button onClick={handleSignIn} className="px-5 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition text-sm font-medium backdrop-blur-sm border border-white/20">
-                Sign In
-              </button>
-            )}
-          </div>
-        </div>
-      </header>
+      <Navigation currentPath="/" />
 
       <main id="main-content" className="relative z-10" tabIndex={-1}>
-        <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-20 pb-12 text-center">
-          <div className="mb-6 inline-flex items-center gap-2 px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-full text-blue-300 text-sm font-medium backdrop-blur-sm">
-            <Sparkles className="w-4 h-4" />
-            AI powered; built for the Lowcountry
+        <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-16 pb-8 text-center">
+          {/* AI Badge with pulse animation */}
+          <div className="mb-4 animate-fadeInDown">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/10 border border-blue-500/30 rounded-full text-blue-300 text-sm font-medium backdrop-blur-sm badge-pulse">
+              <Sparkles className="w-4 h-4 animate-pulse" />
+              AI powered; built for the Lowcountry
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-400 mb-6">
-            <div className="flex items-center gap-2">
+          {/* Stats row directly under AI badge */}
+          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-400 mb-5 animate-fadeIn delay-100">
+            <div className="flex items-center gap-2 glass-light px-3 py-1.5 rounded-full">
               <Users className="w-4 h-4 text-blue-400" />
               <span>50+ agents</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 glass-light px-3 py-1.5 rounded-full">
               <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
               <span>4.9 rating</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 glass-light px-3 py-1.5 rounded-full">
               <Clock className="w-4 h-4 text-green-400" />
-              <span>45 min saved per listing</span>
+              <span>45 min saved</span>
             </div>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 leading-tight tracking-tight">
-            Create listing descriptions<br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">that sell homes faster</span>
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-4 leading-tight tracking-tight animate-fadeInUp delay-150">
+            Create listing descriptions{' '}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">
+              that sell homes faster
+            </span>
           </h1>
 
-          <p className="text-lg sm:text-xl text-gray-300 mb-4 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg sm:text-xl text-gray-300 mb-3 max-w-2xl mx-auto leading-relaxed animate-fadeIn delay-200">
             Generate MLS descriptions, Airbnb listings, and social captions with hyper-local Charleston insights in seconds.
           </p>
 
-          <p className="text-sm text-gray-400 mb-10">
+          <p className="text-sm text-gray-400 mb-6 animate-fadeIn delay-300">
+            <Check className="w-4 h-4 inline mr-1 text-green-400" />
             Try free - no credit card required
           </p>
 
-          <div className="max-w-2xl mx-auto">
-            <div className="relative bg-gray-800/60 backdrop-blur-sm border border-gray-700/50 rounded-2xl p-2 shadow-2xl shadow-blue-500/5">
+          {/* Search input with enhanced styling */}
+          <div className="max-w-2xl mx-auto animate-fadeInUp delay-400">
+            <div className={`relative bg-gray-800/60 backdrop-blur-md border rounded-2xl p-2 shadow-2xl transition-all duration-300 ${
+              generating ? 'border-blue-500/50 shadow-blue-500/20 animate-pulse-glow' : 'border-gray-700/50 shadow-blue-500/5 hover:border-gray-600/50'
+            }`}>
               <div className="flex items-center gap-2 bg-gray-900/60 rounded-xl px-4 py-3">
                 <div className="flex-1">
                   <AddressAutocompleteInput
@@ -350,69 +373,97 @@ export default function Landing() {
                     onChange={setAddress}
                     placeholder="Enter a Charleston address..."
                     autoFocus
-                    inputClassName="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 text-base sm:text-lg focus:ring-0 pl-12"
+                    inputClassName="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 text-base sm:text-lg focus:ring-0 pl-12 input-glow"
                     className="flex-1"
                   />
                 </div>
                 <Button
-                  onClick={handleGetStarted}
+                  onClick={handleGenerate}
                   disabled={!address.trim() || generating}
                   isLoading={generating}
                   icon={!generating && <ArrowRight className="w-5 h-5" />}
                   iconPosition="right"
-                  className="whitespace-nowrap shadow-lg shadow-blue-600/20"
+                  className={`whitespace-nowrap shadow-lg shadow-blue-600/20 btn-glow btn-ripple ${generating ? '' : 'hover:shadow-blue-600/40'}`}
                   aria-label="Generate listing description"
                 >
                   {generating ? 'Generating...' : 'Generate'}
                 </Button>
               </div>
             </div>
+            
+            {/* Typing hint when empty */}
+            {!address && !generating && !results && (
+              <p className="text-xs text-gray-500 mt-3 animate-fadeIn">
+                💡 Start typing an address to auto-generate
+              </p>
+            )}
           </div>
         </section>
 
           {/* Generation Results Section */}
         {(generating || results || generationError) && (
-          <section id="generation-results" className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <section id="generation-results" className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {generating && (
-              <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-2xl border border-gray-700/50 p-12">
+              <div className="glass rounded-2xl shadow-2xl p-8 sm:p-12 animate-scaleIn">
                 <div className="text-center mb-8">
-                  <Loader2 className="w-12 h-12 animate-spin text-blue-400 mx-auto mb-4" aria-hidden="true" />
-                  <h3 className="text-xl font-semibold text-white mb-2">Generating your listing description...</h3>
-                  <p className="text-gray-400">Using neighborhood intelligence and Charleston-specific insights</p>
+                  <div className="relative inline-block">
+                    <div className="w-16 h-16 rounded-full bg-blue-500/20 flex items-center justify-center mx-auto mb-4">
+                      <Loader2 className="w-8 h-8 animate-spin text-blue-400" aria-hidden="true" />
+                    </div>
+                    <div className="absolute inset-0 animate-ping opacity-30">
+                      <div className="w-16 h-16 rounded-full bg-blue-500/30 mx-auto" />
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-semibold text-white mb-2">Generating your listing...</h3>
+                  <p className="text-gray-400 text-sm">Analyzing neighborhood & crafting description</p>
                 </div>
-                <GenerationProgress
-                  currentStep="Generating"
-                  steps={[
-                    { label: 'Analyzing', description: 'Processing address and neighborhood' },
-                    { label: 'Generating', description: 'Creating listing description' },
-                    { label: 'Reviewing', description: 'Quality checking' },
-                  ]}
-                />
-                <div className="mt-8 text-center">
-                  <p className="text-sm text-gray-400">This usually takes 30-60 seconds</p>
+                
+                {/* Simplified progress */}
+                <div className="max-w-md mx-auto">
+                  <div className="progress-bar">
+                    <div className="progress-bar-fill" style={{ '--progress': '70%' } as React.CSSProperties} />
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-500 mt-2">
+                    <span className="text-blue-400">Analyzing</span>
+                    <span>Generating</span>
+                    <span>Done</span>
+                  </div>
                 </div>
+                
+                <p className="text-xs text-gray-500 text-center mt-6">Usually takes 15-30 seconds</p>
               </div>
             )}
 
             {generationError && (
-              <Alert
-                variant="error"
-                title="Generation Failed"
-              >
-                <div className="space-y-4">
-                  <p>{generationError}</p>
-                  <Button
-                    onClick={handleCustomizeRegenerate}
-                    size="sm"
-                  >
-                    Try Advanced Options
-                  </Button>
-                </div>
-              </Alert>
+              <div className="animate-shake">
+                <Alert
+                  variant="error"
+                  title="Generation Failed"
+                >
+                  <div className="space-y-4">
+                    <p>{generationError}</p>
+                    <Button
+                      onClick={handleCustomizeRegenerate}
+                      size="sm"
+                      className="btn-ripple"
+                    >
+                      Try Advanced Options
+                    </Button>
+                  </div>
+                </Alert>
+              </div>
             )}
 
             {results && (
-              <div className="space-y-6">
+              <div className="space-y-6 animate-fadeInUp">
+                {/* Success indicator */}
+                <div className="flex items-center justify-center gap-2 text-green-400 text-sm mb-4 animate-success">
+                  <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
+                    <Check className="w-3 h-3" />
+                  </div>
+                  <span>Description generated successfully!</span>
+                </div>
+                
                 <ResultsDisplay
                   mlsDescription={results.mls}
                   previewSnippet={results.previewSnippet}
@@ -429,22 +480,27 @@ export default function Landing() {
                   subscriptionTier={profile?.subscription_tier || 'free'}
                 />
                 
-                <div className="bg-gradient-to-r from-blue-600/20 to-cyan-600/20 backdrop-blur-sm border border-blue-500/20 rounded-2xl p-6">
+                {/* CTA Card with hover effect */}
+                <div className="card-hover bg-gradient-to-r from-blue-600/20 to-cyan-600/20 backdrop-blur-sm border border-blue-500/20 rounded-2xl p-6">
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="text-center sm:text-left">
-                      <h3 className="text-xl font-bold text-white mb-2">Want more control?</h3>
+                      <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                        <Settings className="w-5 h-5 text-blue-400" />
+                        Want more control?
+                      </h3>
                       <p className="text-gray-300 text-sm">
-                        Add property details, photos, amenities, and generate Airbnb or social media descriptions
+                        Add photos, amenities, and generate Airbnb or social media descriptions
                       </p>
                     </div>
-                <Button
-                  onClick={handleCustomizeRegenerate}
-                  icon={<Settings className="w-5 h-5" />}
-                  iconPosition="left"
-                  aria-label="Customize listing and regenerate"
-                >
-                  Customize & Regenerate
-                </Button>
+                    <Button
+                      onClick={handleCustomizeRegenerate}
+                      icon={<ArrowRight className="w-5 h-5" />}
+                      iconPosition="right"
+                      className="btn-glow btn-ripple whitespace-nowrap"
+                      aria-label="Customize listing and regenerate"
+                    >
+                      Customize & Regenerate
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -452,7 +508,7 @@ export default function Landing() {
           </section>
         )}
 
-        <section id="features" className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <section id="features" className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="text-center mb-12">
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">Built for Charleston real estate</h2>
             <p className="text-gray-400 text-lg max-w-2xl mx-auto">
@@ -460,44 +516,44 @@ export default function Landing() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="bg-gray-800/40 backdrop-blur-sm border border-gray-700/50 rounded-2xl p-8 hover:border-gray-600/50 transition group">
-              <div className="w-14 h-14 bg-blue-500/10 rounded-xl flex items-center justify-center mb-6 group-hover:bg-blue-500/20 transition">
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="card-hover glass rounded-2xl p-8 group">
+              <div className="w-14 h-14 bg-blue-500/10 rounded-xl flex items-center justify-center mb-6 group-hover:bg-blue-500/20 group-hover:scale-110 transition-all duration-300">
                 <MapPin className="w-7 h-7 text-blue-400" />
               </div>
-              <h3 className="font-semibold text-xl mb-3">Neighborhood Intelligence</h3>
-              <p className="text-gray-400 leading-relaxed">
-                Our AI knows Downtown's historic charm, Mount Pleasant's family appeal, and everything in between. Descriptions include real landmarks, schools, and local hotspots.
+              <h3 className="font-semibold text-xl mb-3 group-hover:text-blue-300 transition">Neighborhood Intelligence</h3>
+              <p className="text-gray-400 leading-relaxed text-sm">
+                Our AI knows Downtown's historic charm, Mount Pleasant's family appeal, and everything in between. Real landmarks, schools, and local hotspots.
               </p>
             </div>
 
-            <div className="bg-gray-800/40 backdrop-blur-sm border border-gray-700/50 rounded-2xl p-8 hover:border-gray-600/50 transition group">
-              <div className="w-14 h-14 bg-cyan-500/10 rounded-xl flex items-center justify-center mb-6 group-hover:bg-cyan-500/20 transition">
+            <div className="card-hover glass rounded-2xl p-8 group">
+              <div className="w-14 h-14 bg-cyan-500/10 rounded-xl flex items-center justify-center mb-6 group-hover:bg-cyan-500/20 group-hover:scale-110 transition-all duration-300">
                 <FileText className="w-7 h-7 text-cyan-400" />
               </div>
-              <h3 className="font-semibold text-xl mb-3">Multiple Formats</h3>
-              <p className="text-gray-400 leading-relaxed">
-                Generate MLS-ready descriptions, Airbnb listings optimized for bookings, and social media captions - all tailored to each platform's best practices.
+              <h3 className="font-semibold text-xl mb-3 group-hover:text-cyan-300 transition">Multiple Formats</h3>
+              <p className="text-gray-400 leading-relaxed text-sm">
+                Generate MLS-ready descriptions, Airbnb listings optimized for bookings, and social media captions - all platform-optimized.
               </p>
             </div>
 
-            <div className="bg-gray-800/40 backdrop-blur-sm border border-gray-700/50 rounded-2xl p-8 hover:border-gray-600/50 transition group">
-              <div className="w-14 h-14 bg-green-500/10 rounded-xl flex items-center justify-center mb-6 group-hover:bg-green-500/20 transition">
+            <div className="card-hover glass rounded-2xl p-8 group">
+              <div className="w-14 h-14 bg-green-500/10 rounded-xl flex items-center justify-center mb-6 group-hover:bg-green-500/20 group-hover:scale-110 transition-all duration-300">
                 <Zap className="w-7 h-7 text-green-400" />
               </div>
-              <h3 className="font-semibold text-xl mb-3">Instant Results</h3>
-              <p className="text-gray-400 leading-relaxed">
-                Go from property details to polished description in under 30 seconds. Upload photos for AI analysis that captures every selling point automatically.
+              <h3 className="font-semibold text-xl mb-3 group-hover:text-green-300 transition">Instant Results</h3>
+              <p className="text-gray-400 leading-relaxed text-sm">
+                Go from address to polished description in under 30 seconds. Upload photos for AI analysis that captures every selling point.
               </p>
             </div>
 
-            <div className="bg-gray-800/40 backdrop-blur-sm border border-gray-700/50 rounded-2xl p-8 hover:border-gray-600/50 transition group">
-              <div className="w-14 h-14 bg-amber-500/10 rounded-xl flex items-center justify-center mb-6 group-hover:bg-amber-500/20 transition">
-                <Clock className="w-7 h-7 text-amber-400" />
+            <div className="card-hover glass rounded-2xl p-8 group">
+              <div className="w-14 h-14 bg-amber-500/10 rounded-xl flex items-center justify-center mb-6 group-hover:bg-amber-500/20 group-hover:scale-110 transition-all duration-300">
+                <Image className="w-7 h-7 text-amber-400" />
               </div>
-              <h3 className="font-semibold text-xl mb-3">Generation History</h3>
-              <p className="text-gray-400 leading-relaxed">
-                Every listing saved to your dashboard. Revisit, edit, and reuse previous generations. Track your entire portfolio in one place.
+              <h3 className="font-semibold text-xl mb-3 group-hover:text-amber-300 transition">Photo Analysis</h3>
+              <p className="text-gray-400 leading-relaxed text-sm">
+                Upload property photos and our AI extracts features automatically - hardwood floors, granite counters, natural light, and more.
               </p>
             </div>
           </div>

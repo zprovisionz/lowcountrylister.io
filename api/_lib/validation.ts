@@ -26,6 +26,7 @@ export const GenerateListingSchema = z.object({
       })
     )
     .optional(),
+  team_id: z.string().uuid().optional(),
 });
 
 export const StagePhotoSchema = z.object({

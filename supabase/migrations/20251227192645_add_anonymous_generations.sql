@@ -50,6 +50,27 @@ CREATE TABLE IF NOT EXISTS anonymous_generations (
   linked_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL
 );
 
+-- Enable Row Level Security (RLS)
+ALTER TABLE anonymous_generations ENABLE ROW LEVEL SECURITY;
+
+-- Create policy to allow service role to access all rows (for backend API)
+CREATE POLICY "Service role can manage anonymous_generations"
+  ON anonymous_generations
+  FOR ALL
+  TO service_role
+  USING (true)
+  WITH CHECK (true);
+
+-- Allow authenticated users to read their own linked generations
+CREATE POLICY "Users can view their linked anonymous generations"
+  ON anonymous_generations
+  FOR SELECT
+  TO authenticated
+  USING (linked_user_id = auth.uid());
+
+-- Allow service role to bypass RLS (most permissive for backend)
+-- Note: service_role bypasses RLS by default, but explicit policy is clearer
+
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_anonymous_generations_session_id ON anonymous_generations(session_id);
 CREATE INDEX IF NOT EXISTS idx_anonymous_generations_ip_fingerprint ON anonymous_generations(ip_address, device_fingerprint);

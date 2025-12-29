@@ -150,11 +150,19 @@ export async function apiCall<T>(
         errorData = { error: response.statusText };
       }
 
-      throw new AppError(errorData.error || `Request failed: ${response.statusText}`, {
+      // Log error details for debugging - show full error message
+      console.error('=== API ERROR DETAILS ===');
+      console.error('Status:', response.status, response.statusText);
+      console.error('Error Message:', errorData.error || errorData.details || 'No error message');
+      console.error('Error Code:', errorData.code || 'N/A');
+      console.error('Full Error Data:', errorData);
+      console.error('========================');
+
+      throw new AppError(errorData.error || errorData.details || `Request failed: ${response.statusText}`, {
         code: errorData.code,
         statusCode: response.status,
         retryable: response.status >= 500,
-        userMessage: errorData.error || getErrorMessage(response.status),
+        userMessage: errorData.error || errorData.details || getErrorMessage(response.status),
       });
     }
 

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, Generation } from '../lib/supabase';
-import { Waves, LogOut, FileText, Calendar, MapPin, Plus, Settings, CreditCard, X, Copy, Check } from 'lucide-react';
+import { Waves, LogOut, FileText, Calendar, MapPin, Plus, Settings, CreditCard, X, Copy, Check, Edit3, ChevronDown } from 'lucide-react';
 import { NotificationContainer, NotificationType } from '../components/Notification';
 import { logger } from '../lib/logger';
 import { SkeletonList } from '../components/ui/Skeleton';
+import Navigation from '../components/Navigation';
 
 export default function Dashboard() {
   const { user, profile, signOut } = useAuth();
@@ -95,104 +96,91 @@ export default function Dashboard() {
       <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-blue-500/10 to-transparent"></div>
       <div className="absolute bottom-0 left-0 right-0 h-2 bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-500"></div>
 
-      <header className="bg-gray-900/50 border-b border-gray-800/50 shadow-lg sticky top-0 z-40 backdrop-blur-sm relative">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+      <Navigation currentPath="/dashboard" />
+      
+      <div className="max-w-6xl mx-auto px-4 py-4">
+        <div className="relative flex justify-end">
           <button
-            onClick={() => {
-              window.history.pushState({}, '', '/');
-              window.dispatchEvent(new PopStateEvent('popstate'));
-            }}
-            className="flex items-center gap-3 hover:opacity-80 transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 rounded-lg px-2 py-1"
-            aria-label="Go to home page"
+            onClick={() => setShowMenu(!showMenu)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-800/50 transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+            aria-label="User menu"
+            aria-expanded={showMenu}
+            aria-haspopup="true"
           >
-            <Waves className="w-8 h-8 text-blue-400" aria-hidden="true" />
-            <div>
-              <h1 className="text-xl font-bold text-white">Lowcountry Listings AI</h1>
-              <p className="text-xs text-gray-400 hidden sm:block">Generation History</p>
+            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm" aria-hidden="true">
+              {profile?.email.charAt(0).toUpperCase()}
             </div>
+            <span className="text-sm text-gray-300 hidden sm:block">{profile?.email}</span>
+            <ChevronDown className="w-4 h-4 text-gray-400" />
           </button>
 
-          <div className="relative">
-            <button
-              onClick={() => setShowMenu(!showMenu)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-800/50 transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900"
-              aria-label="User menu"
-              aria-expanded={showMenu}
-              aria-haspopup="true"
+          {showMenu && (
+            <div 
+              className="absolute right-0 mt-2 w-56 bg-gray-800/95 backdrop-blur-sm rounded-lg shadow-xl border border-gray-700/50 py-2 z-50"
+              role="menu"
+              aria-orientation="vertical"
             >
-              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm" aria-hidden="true">
-                {profile?.email.charAt(0).toUpperCase()}
+              <div className="px-4 py-2 border-b border-gray-700/50">
+                <p className="text-xs text-gray-400">Plan</p>
+                <p className="font-semibold text-white capitalize">
+                  {profile?.subscription_tier === 'pro_plus' ? 'Pro+' : profile?.subscription_tier}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {profile?.generations_this_month} generations used
+                </p>
               </div>
-              <span className="text-sm text-gray-300 hidden sm:block">{profile?.email}</span>
-            </button>
-
-            {showMenu && (
-              <div 
-                className="absolute right-0 mt-2 w-56 bg-gray-800/95 backdrop-blur-sm rounded-lg shadow-xl border border-gray-700/50 py-2 z-50"
-                role="menu"
-                aria-orientation="vertical"
+              <button
+                onClick={() => {
+                  window.history.pushState({}, '', '/generate');
+                  window.dispatchEvent(new PopStateEvent('popstate'));
+                  setShowMenu(false);
+                }}
+                className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-700/50 text-gray-300 transition text-left focus:outline-none focus:bg-gray-700/50"
+                role="menuitem"
+                aria-label="Create new generation"
               >
-                <div className="px-4 py-2 border-b border-gray-700/50">
-                  <p className="text-xs text-gray-400">Plan</p>
-                  <p className="font-semibold text-white capitalize">
-                    {profile?.subscription_tier === 'pro_plus' ? 'Pro+' : profile?.subscription_tier}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {profile?.generations_this_month} generations used
-                  </p>
-                </div>
-                <button
-                  onClick={() => {
-                    window.history.pushState({}, '', '/');
-                    setShowMenu(false);
-                  }}
-                  className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-700/50 text-gray-300 transition text-left focus:outline-none focus:bg-gray-700/50"
-                  role="menuitem"
-                  aria-label="Create new generation"
-                >
-                  <Plus className="w-4 h-4" aria-hidden="true" />
-                  New Generation
-                </button>
-                <button
-                  onClick={() => {
-                    window.history.pushState({}, '', '/account');
-                    window.dispatchEvent(new PopStateEvent('popstate'));
-                    setShowMenu(false);
-                  }}
-                  className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-700/50 text-gray-300 transition text-left focus:outline-none focus:bg-gray-700/50"
-                  role="menuitem"
-                  aria-label="Go to account settings"
-                >
-                  <Settings className="w-4 h-4" aria-hidden="true" />
-                  Account Settings
-                </button>
-                <button
-                  onClick={() => {
-                    window.history.pushState({}, '', '/pricing');
-                    window.dispatchEvent(new PopStateEvent('popstate'));
-                    setShowMenu(false);
-                  }}
-                  className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-700/50 text-gray-300 transition text-left focus:outline-none focus:bg-gray-700/50"
-                  role="menuitem"
-                  aria-label="View pricing plans"
-                >
-                  <CreditCard className="w-4 h-4" aria-hidden="true" />
-                  Pricing
-                </button>
-                <button
-                  onClick={handleSignOut}
-                  className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-700/50 text-red-400 transition text-left focus:outline-none focus:bg-gray-700/50"
-                  role="menuitem"
-                  aria-label="Sign out"
-                >
-                  <LogOut className="w-4 h-4" aria-hidden="true" />
-                  Logout
-                </button>
-              </div>
-            )}
-          </div>
+                <Plus className="w-4 h-4" aria-hidden="true" />
+                New Generation
+              </button>
+              <button
+                onClick={() => {
+                  window.history.pushState({}, '', '/account');
+                  window.dispatchEvent(new PopStateEvent('popstate'));
+                  setShowMenu(false);
+                }}
+                className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-700/50 text-gray-300 transition text-left focus:outline-none focus:bg-gray-700/50"
+                role="menuitem"
+                aria-label="Go to account settings"
+              >
+                <Settings className="w-4 h-4" aria-hidden="true" />
+                Account Settings
+              </button>
+              <button
+                onClick={() => {
+                  window.history.pushState({}, '', '/pricing');
+                  window.dispatchEvent(new PopStateEvent('popstate'));
+                  setShowMenu(false);
+                }}
+                className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-700/50 text-gray-300 transition text-left focus:outline-none focus:bg-gray-700/50"
+                role="menuitem"
+                aria-label="View pricing plans"
+              >
+                <CreditCard className="w-4 h-4" aria-hidden="true" />
+                Pricing
+              </button>
+              <button
+                onClick={handleSignOut}
+                className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-700/50 text-red-400 transition text-left focus:outline-none focus:bg-gray-700/50"
+                role="menuitem"
+                aria-label="Sign out"
+              >
+                <LogOut className="w-4 h-4" aria-hidden="true" />
+                Logout
+              </button>
+            </div>
+          )}
         </div>
-      </header>
+      </div>
 
       <main id="main-content" className="max-w-6xl mx-auto px-4 py-8 md:py-12 relative z-10" tabIndex={-1}>
         <div className="mb-8">
@@ -264,6 +252,16 @@ export default function Dashboard() {
                 </div>
 
                 <div className="flex items-center gap-4 mt-4">
+                  <button
+                    onClick={() => {
+                      window.history.pushState({}, '', `/generate?generationId=${generation.id}`);
+                      window.dispatchEvent(new PopStateEvent('popstate'));
+                    }}
+                    className="flex items-center gap-1 text-blue-400 hover:text-blue-300 font-medium text-sm transition"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                    Edit & Refine
+                  </button>
                   <button
                     onClick={() => handleViewFull(generation)}
                     className="text-blue-400 hover:text-blue-300 font-medium text-sm transition"

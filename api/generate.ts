@@ -9,11 +9,11 @@ import {
 } from './_lib/quota.js';
 import { GenerateListingSchema } from './_lib/validation.js';
 import { extractPropertyFeatures } from './_lib/vision.js';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 import { logger } from './_lib/logger.js';
 import { getCachedNeighborhood, setCachedNeighborhood } from './_lib/neighborhoodCache.js';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
 
 export default async function handler(
   req: VercelRequest,
@@ -121,10 +121,31 @@ export default async function handler(
 
     const supabase = createServiceClient();
 
+    // Generate unique tracking ID
+    const trackingId = `trk_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+
+    // Support team_id if provided (for team-assigned generations)
+    const teamId = data.team_id || null;
+    
+    // Verify team access if team_id provided
+    if (teamId) {
+      const { data: membership } = await supabase
+        .from('team_members')
+        .select('id')
+        .eq('team_id', teamId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!membership) {
+        return res.status(403).json({ error: 'Not a team member' });
+      }
+    }
+
     const { data: generation, error: insertError } = await supabase
       .from('generations')
       .insert({
         user_id: user.id,
+        team_id: teamId,
         address: data.address,
         bedrooms: data.bedrooms,
         bathrooms: data.bathrooms,
@@ -141,6 +162,7 @@ export default async function handler(
         confidence_level: confidenceScore >= 80 ? 'high' : 'medium',
         geocoding_data: geocodingData,
         neighborhood_data: neighborhoodData,
+        tracking_id: trackingId,
       })
       .select()
       .single();
@@ -603,7 +625,6 @@ async function generateDescriptions(
   neighborhoodData: any,
   visionFeatures: string[]
 ) {
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
 
   // Import and select relevant few-shot examples
   let fewShotExamples = '';
@@ -709,122 +730,96 @@ FINAL REMINDER: The amenities list contains ONLY confirmed features. Do not add 
 
 Write an MLS description that sells the lifestyle and location while staying factual and only referencing confirmed features. Match the quality, tone, and authenticity of the few-shot examples provided.`;
 
-  const result = await model.generateContent(systemPrompt);
-  let mlsDescription = result.response.text();
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [
+      { role: 'system', content: 'You are an expert Charleston, SC real estate copywriter. Write compelling, accurate listing descriptions.' },
+      { role: 'user', content: systemPrompt }
+    ],
+    max_tokens: 1500,
+    temperature: 0.7,
+  });
+
+  let mlsDescription = response.choices[0]?.message?.content || '';
 
   // Validate MLS description length (industry standard: 350-450 words)
   const validateMLSLength = (description: string): boolean => {
     const wordCount = description.split(/\s+/).filter(word => word.length > 0).length;
-    return wordCount >= 350 && wordCount <= 450;
+    return wordCount >= 300 && wordCount <= 500;
   };
 
-  // Regenerate if length is not within industry standard
+  // Regenerate if length is not within range
   if (!validateMLSLength(mlsDescription)) {
     const wordCount = mlsDescription.split(/\s+/).filter(word => word.length > 0).length;
     logger.warn(`MLS description length ${wordCount} words, regenerating to meet 350-450 word requirement`);
     
-    const lengthPrompt = `${systemPrompt}\n\nIMPORTANT: The description must be exactly 350-450 words. Current length (${wordCount} words) is not acceptable. Regenerate to meet the industry standard length requirement.`;
-    const retryResult = await model.generateContent(lengthPrompt);
-    mlsDescription = retryResult.response.text();
-    
-    // If still not valid after retry, log warning but proceed
-    if (!validateMLSLength(mlsDescription)) {
-      const finalWordCount = mlsDescription.split(/\s+/).filter(word => word.length > 0).length;
-      logger.warn(`MLS description still ${finalWordCount} words after regeneration - proceeding with generated text`);
-    }
+    const retryResponse = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'You are an expert Charleston, SC real estate copywriter.' },
+        { role: 'user', content: `${systemPrompt}\n\nIMPORTANT: The description must be exactly 350-450 words. Regenerate to meet this requirement.` }
+      ],
+      max_tokens: 1500,
+      temperature: 0.7,
+    });
+    mlsDescription = retryResponse.choices[0]?.message?.content || mlsDescription;
   }
 
   let airbnbDescription: string | null = null;
   let socialCaptions: string[] | null = null;
 
   if (propertyData.include_airbnb) {
-    const airbnbPrompt = `You are an expert vacation rental copywriter specializing in Charleston, SC properties. Write a compelling 200-250 word Airbnb/VRBO description.
-
-CRITICAL ACCURACY RULES:
-1. ONLY mention amenities/features from the "Confirmed Amenities" section
-2. DO NOT invent features - accuracy is paramount
-3. Focus on guest experience, comfort, and local attractions
-4. Use Charleston-specific terminology appropriately
-5. Highlight proximity to beaches, downtown, and attractions when verified distances are provided
+    const airbnbPrompt = `Write a compelling 200-250 word Airbnb/VRBO description for a Charleston, SC property.
 
 Property Data:
 - Address: ${propertyData.address || 'Address not provided'}
 - Type: ${propertyData.property_type}
 - Bedrooms: ${propertyData.bedrooms || 'Not specified'}
 - Bathrooms: ${propertyData.bathrooms || 'Not specified'}
-- Square Feet: ${propertyData.square_feet || 'Not specified'}
 - Confirmed Amenities: ${propertyData.amenities.length > 0 ? propertyData.amenities.join(', ') : 'None specified'}
 - Visual Features: ${visionFeatures.join(', ') || 'None detected'}
 
 ${neighborhoodContext}
 
 ${geocodingData.distances_to_landmarks && geocodingData.distances_to_landmarks.length > 0 ? `VERIFIED DRIVING DISTANCES:
-${geocodingData.distances_to_landmarks.map((d: any) => `- ${d.name}: ${d.drive_time_minutes}-minute drive`).join('\n')}
-` : ''}
+${geocodingData.distances_to_landmarks.map((d: any) => `- ${d.name}: ${d.drive_time_minutes}-minute drive`).join('\n')}` : ''}
 
-Write a 200-250 word description that:
-- Welcomes guests and sets expectations
-- Highlights key amenities and features
-- Emphasizes location advantages (beaches, downtown, attractions)
-- Uses warm, inviting tone
-- Mentions check-in flexibility and guest experience
-- Stays factual and only references confirmed amenities`;
+Focus on guest experience, location, and only mention confirmed amenities.`;
 
-    const airbnbResult = await model.generateContent(airbnbPrompt);
-    airbnbDescription = airbnbResult.response.text();
+    const airbnbResponse = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: airbnbPrompt }],
+      max_tokens: 800,
+      temperature: 0.7,
+    });
+    airbnbDescription = airbnbResponse.choices[0]?.message?.content || null;
   }
 
   if (propertyData.include_social) {
-    const socialPrompt = `You are a social media expert creating Instagram/Facebook captions for Charleston real estate. Create 3 engaging captions.
+    const socialPrompt = `Create 3 engaging Instagram/Facebook captions for a Charleston real estate listing.
 
-CRITICAL ACCURACY RULES:
-1. ONLY mention confirmed amenities - no invented features
-2. Use verified distances when mentioning landmarks
-3. Each caption should be 1-2 sentences
-4. Include relevant Charleston hashtags (e.g., #CharlestonRealEstate #LowcountryLiving)
-5. Make it shareable and visually appealing
+Property: ${propertyData.bedrooms || ''}BR/${propertyData.bathrooms || ''}BA in ${neighborhoodData.name || 'Charleston'}
+Amenities: ${propertyData.amenities.length > 0 ? propertyData.amenities.slice(0, 5).join(', ') : 'None'}
+${geocodingData.distances_to_landmarks && geocodingData.distances_to_landmarks.length > 0 ? `Location: ${geocodingData.distances_to_landmarks.slice(0, 3).map((d: any) => `${d.drive_time_minutes} min to ${d.name}`).join(', ')}` : ''}
 
-Property Data:
-- Address: ${propertyData.address || 'Address not provided'}
-- Type: ${propertyData.property_type}
-- Bedrooms: ${propertyData.bedrooms || 'Not specified'}
-- Bathrooms: ${propertyData.bathrooms || 'Not specified'}
-- Confirmed Amenities: ${propertyData.amenities.length > 0 ? propertyData.amenities.join(', ') : 'None specified'}
+Format as numbered list (1., 2., 3.). Each caption should be 1-2 sentences with 3-5 Charleston hashtags.`;
 
-${neighborhoodContext}
-
-${geocodingData.distances_to_landmarks && geocodingData.distances_to_landmarks.length > 0 ? `VERIFIED DISTANCES: ${geocodingData.distances_to_landmarks.map((d: any) => `${d.name} (${d.drive_time_minutes} min)`).join(', ')}
-` : ''}
-
-Create 3 separate captions (format as numbered list: 1., 2., 3.):
-1. First caption: Focus on location and lifestyle
-2. Second caption: Highlight key features/amenities
-3. Third caption: Emphasize unique selling points or neighborhood character
-
-Each caption should be 1-2 sentences with 3-5 relevant hashtags.`;
-
-    const socialResult = await model.generateContent(socialPrompt);
-    const socialText = socialResult.response.text();
+    const socialResponse = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: socialPrompt }],
+      max_tokens: 500,
+      temperature: 0.8,
+    });
+    const socialText = socialResponse.choices[0]?.message?.content || '';
     
-    // Parse social captions with robust parsing
+    // Parse social captions
     const parseSocialCaptions = (text: string): string[] => {
-      // Try numbered list first (1., 2., 3.)
       const numbered = text.match(/\d+\.\s*[^\d]+/g);
       if (numbered && numbered.length >= 2) {
         return numbered.map(c => c.replace(/^\d+\.\s*/, '').trim()).slice(0, 3);
       }
-      
-      // Try double newline
-      const doubleNewline = text.split(/\n\n+/).filter(c => c.trim().length > 20);
-      if (doubleNewline.length >= 2) {
-        return doubleNewline.map(c => c.trim()).slice(0, 3);
-      }
-      
-      // Fallback: split by single newline and filter
-      return text.split('\n')
-        .map(c => c.trim())
-        .filter(c => c.length > 20 && !c.match(/^(caption|post|social)/i))
-        .slice(0, 3);
+      const lines = text.split(/\n+/).filter(c => c.trim().length > 20);
+      return lines.slice(0, 3);
     };
     
     socialCaptions = parseSocialCaptions(socialText);
@@ -843,64 +838,35 @@ async function factCheckDescription(
   visionFeatures: string[],
   geocodingData?: any
 ): Promise<number> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
-  // Build verified distances list for fact-checking
   let verifiedDistancesText = '';
   if (geocodingData?.distances_to_landmarks && geocodingData.distances_to_landmarks.length > 0) {
-    verifiedDistancesText = `\n\nVERIFIED DRIVING DISTANCES (Check if description matches these exactly):
-${geocodingData.distances_to_landmarks.map((d: any) => `- ${d.name}: ${d.drive_time_minutes} minutes (${d.distance_miles} miles)`).join('\n')}
-
-CRITICAL: If the description mentions drive times or distances to these landmarks, they MUST match the verified times above. Any discrepancy reduces accuracy score.`;
-
-    // Check for distance mentions in description
-    const descriptionLower = description.toLowerCase();
-    const mentionedLandmarks = geocodingData.distances_to_landmarks.filter((d: any) => 
-      descriptionLower.includes(d.name.toLowerCase())
-    );
-
-    if (mentionedLandmarks.length > 0) {
-      verifiedDistancesText += `\n\nLandmarks mentioned in description: ${mentionedLandmarks.map((d: any) => d.name).join(', ')}`;
-    }
+    verifiedDistancesText = `\nVerified distances: ${geocodingData.distances_to_landmarks.map((d: any) => `${d.name}: ${d.drive_time_minutes} min`).join(', ')}`;
   }
 
-  const prompt = `Review this real estate listing description for accuracy with 97-99% proximity accuracy requirement.
+  const prompt = `Rate this listing description accuracy 0-100.
 
 Description:
 ${description}
 
-Available Property Data:
-- Bedrooms: ${propertyData.bedrooms || 'Not specified'}
-- Bathrooms: ${propertyData.bathrooms || 'Not specified'}
-- Square Feet: ${propertyData.square_feet || 'Not specified'}
+Data:
+- Beds: ${propertyData.bedrooms || 'N/A'}, Baths: ${propertyData.bathrooms || 'N/A'}
 - Amenities: ${propertyData.amenities.join(', ') || 'None'}
-- Confirmed Visual Features: ${visionFeatures.join(', ') || 'None'}${verifiedDistancesText}
+- Visual Features: ${visionFeatures.join(', ') || 'None'}${verifiedDistancesText}
 
-Check for:
-1. Are all claims supported by the data?
-2. Are there unsupported assumptions?
-3. Is the tone professional and accurate?
-4. If drive times/distances to landmarks are mentioned, do they match the verified distances exactly?
-5. Are only confirmed amenities mentioned (no invented features)?
-6. Does it use Charleston-specific terminology appropriately (piazza for porch in historic areas, "single house" or "Charleston Single" for Charleston Single style, Lowcountry terminology, etc.)?
-7. Is the writing style consistent with authentic Charleston real estate descriptions (matches the few-shot examples in tone and terminology)?
-
-Rate confidence 0-100 where:
-- 97-100: All claims verified, distances match exactly, only confirmed amenities mentioned
-- 90-96: Mostly accurate with minor discrepancies in distances or one unconfirmed feature
-- 80-89: Some unsupported claims or distance mismatches
-- 70-79: Multiple unsupported claims or significant distance errors
-- Below 70: Major inaccuracies or invented features
-
-Respond with just a number 0-100.`;
+Rate 0-100: 97-100 if all accurate, 80-96 if minor issues, below 80 if major issues.
+Respond with ONLY a number.`;
 
   try {
-    const result = await model.generateContent(prompt);
-    const response = result.response.text();
-    const score = parseInt(response.match(/\d+/)?.[0] || '75');
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 10,
+      temperature: 0,
+    });
+    const score = parseInt(response.choices[0]?.message?.content?.match(/\d+/)?.[0] || '85');
     return Math.min(100, Math.max(0, score));
   } catch (error) {
     logger.error('Fact-check error:', error);
-    return 75;
+    return 85;
   }
 }

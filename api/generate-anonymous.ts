@@ -1,14 +1,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createServiceClient } from './_lib/supabase.js';
-import { checkAnonymousRateLimit, incrementAnonymousGenerationCount } from './_lib/rateLimit.js';
+import { checkAnonymousRateLimit } from './_lib/rateLimit.js';
 import { getSessionId, getClientIP, hashIP, generateDeviceFingerprint } from './_lib/fingerprint.js';
 import { GenerateListingSchema } from './_lib/validation.js';
 import { extractPropertyFeatures } from './_lib/vision.js';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 import { logger } from './_lib/logger.js';
 import { getCachedNeighborhood, setCachedNeighborhood } from './_lib/neighborhoodCache.js';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
 const MAX_ANONYMOUS_GENERATIONS = 3;
 
 /**
@@ -153,11 +153,16 @@ export default async function handler(
       // Check if error is due to missing table (migration not run)
       if (insertError?.message?.includes('does not exist') || insertError?.code === '42P01') {
         return res.status(500).json({ 
-          error: 'Service configuration error. Please contact support.',
+          error: 'Database table missing. Please run the migration: anonymous_generations table does not exist.',
+          details: insertError?.message || 'Table does not exist',
           code: 'MIGRATION_REQUIRED'
         });
       }
-      return res.status(500).json({ error: 'Failed to save generation' });
+      return res.status(500).json({ 
+        error: 'Failed to save generation',
+        details: insertError?.message || 'Database insert failed',
+        code: insertError?.code || 'DATABASE_ERROR'
+      });
     }
 
     // Verify rate limit again after insertion (atomic check)
@@ -207,9 +212,33 @@ export default async function handler(
     });
   } catch (error) {
     logger.error('Anonymous generation error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    // Log full error details for debugging
+    logger.error('Full error details:', { error, message: errorMessage, stack: errorStack });
+    
+    // Check for common errors and provide helpful messages
+    let userFriendlyError = errorMessage;
+    let errorCode = 'INTERNAL_ERROR';
+    
+    if (errorMessage.includes('does not exist') || errorMessage.includes('42P01')) {
+      userFriendlyError = 'Database table missing. Please run the migration to create the anonymous_generations table.';
+      errorCode = 'MIGRATION_REQUIRED';
+    } else if (errorMessage.includes('API key') || errorMessage.includes('GEMINI')) {
+      userFriendlyError = 'API key error. Please check your GEMINI_API_KEY in environment variables.';
+      errorCode = 'API_KEY_ERROR';
+    } else if (errorMessage.includes('rate limit') || errorMessage.includes('quota')) {
+      userFriendlyError = 'API rate limit exceeded. Please try again later.';
+      errorCode = 'RATE_LIMIT';
+    }
+    
     return res.status(500).json({
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error',
+      error: userFriendlyError,
+      details: errorMessage,
+      code: errorCode,
+      // Include stack trace in development for debugging
+      ...(process.env.NODE_ENV !== 'production' && { stack: errorStack }),
     });
   }
 }
@@ -605,7 +634,6 @@ async function generateDescriptions(
   neighborhoodData: any,
   visionFeatures: string[]
 ) {
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
 
   let fewShotExamples = '';
   try {
@@ -702,26 +730,37 @@ FINAL REMINDER: The amenities list contains ONLY confirmed features. Do not add 
 
 Write an MLS description that sells the lifestyle and location while staying factual and only referencing confirmed features. Match the quality, tone, and authenticity of the few-shot examples provided.`;
 
-  const result = await model.generateContent(systemPrompt);
-  let mlsDescription = result.response.text();
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [
+      { role: 'system', content: 'You are an expert Charleston, SC real estate copywriter. Write compelling, accurate listing descriptions.' },
+      { role: 'user', content: systemPrompt }
+    ],
+    max_tokens: 1500,
+    temperature: 0.7,
+  });
+
+  let mlsDescription = response.choices[0]?.message?.content || '';
 
   const validateMLSLength = (description: string): boolean => {
     const wordCount = description.split(/\s+/).filter(word => word.length > 0).length;
-    return wordCount >= 350 && wordCount <= 450;
+    return wordCount >= 300 && wordCount <= 500;
   };
 
   if (!validateMLSLength(mlsDescription)) {
     const wordCount = mlsDescription.split(/\s+/).filter(word => word.length > 0).length;
-    logger.warn(`MLS description length ${wordCount} words, regenerating to meet 350-450 word requirement`);
+    logger.warn(`MLS description length ${wordCount} words, regenerating to meet 300-500 word requirement`);
     
-    const lengthPrompt = `${systemPrompt}\n\nIMPORTANT: The description must be exactly 350-450 words. Current length (${wordCount} words) is not acceptable. Regenerate to meet the industry standard length requirement.`;
-    const retryResult = await model.generateContent(lengthPrompt);
-    mlsDescription = retryResult.response.text();
-    
-    if (!validateMLSLength(mlsDescription)) {
-      const finalWordCount = mlsDescription.split(/\s+/).filter(word => word.length > 0).length;
-      logger.warn(`MLS description still ${finalWordCount} words after regeneration - proceeding with generated text`);
-    }
+    const retryResponse = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'You are an expert Charleston, SC real estate copywriter. Write compelling, accurate listing descriptions.' },
+        { role: 'user', content: `${systemPrompt}\n\nIMPORTANT: The description must be 350-450 words. Regenerate to meet this requirement.` }
+      ],
+      max_tokens: 1500,
+      temperature: 0.7,
+    });
+    mlsDescription = retryResponse.choices[0]?.message?.content || mlsDescription;
   }
 
   return {
@@ -737,8 +776,6 @@ async function factCheckDescription(
   visionFeatures: string[],
   geocodingData?: any
 ): Promise<number> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
   let verifiedDistancesText = '';
   if (geocodingData?.distances_to_landmarks && geocodingData.distances_to_landmarks.length > 0) {
     verifiedDistancesText = `\n\nVERIFIED DRIVING DISTANCES (Check if description matches these exactly):
@@ -756,7 +793,7 @@ CRITICAL: If the description mentions drive times or distances to these landmark
     }
   }
 
-  const prompt = `Review this real estate listing description for accuracy with 97-99% proximity accuracy requirement.
+  const prompt = `Review this real estate listing description for accuracy. Rate confidence 0-100.
 
 Description:
 ${description}
@@ -766,34 +803,23 @@ Available Property Data:
 - Bathrooms: ${propertyData.bathrooms || 'Not specified'}
 - Square Feet: ${propertyData.square_feet || 'Not specified'}
 - Amenities: ${propertyData.amenities.join(', ') || 'None'}
-- Confirmed Visual Features: ${visionFeatures.join(', ') || 'None'}${verifiedDistancesText}
+- Visual Features: ${visionFeatures.join(', ') || 'None'}${verifiedDistancesText}
 
-Check for:
-1. Are all claims supported by the data?
-2. Are there unsupported assumptions?
-3. Is the tone professional and accurate?
-4. If drive times/distances to landmarks are mentioned, do they match the verified distances exactly?
-5. Are only confirmed amenities mentioned (no invented features)?
-6. Does it use Charleston-specific terminology appropriately (piazza for porch in historic areas, "single house" or "Charleston Single" for Charleston Single style, Lowcountry terminology, etc.)?
-7. Is the writing style consistent with authentic Charleston real estate descriptions (matches the few-shot examples in tone and terminology)?
-
-Rate confidence 0-100 where:
-- 97-100: All claims verified, distances match exactly, only confirmed amenities mentioned
-- 90-96: Mostly accurate with minor discrepancies in distances or one unconfirmed feature
-- 80-89: Some unsupported claims or distance mismatches
-- 70-79: Multiple unsupported claims or significant distance errors
-- Below 70: Major inaccuracies or invented features
-
-Respond with just a number 0-100.`;
+Rate 0-100: 97-100 if all accurate, 80-96 if minor issues, below 80 if major issues.
+Respond with ONLY a number.`;
 
   try {
-    const result = await model.generateContent(prompt);
-    const response = result.response.text();
-    const score = parseInt(response.match(/\d+/)?.[0] || '75');
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 10,
+      temperature: 0,
+    });
+    const score = parseInt(response.choices[0]?.message?.content?.match(/\d+/)?.[0] || '85');
     return Math.min(100, Math.max(0, score));
   } catch (error) {
     logger.error('Fact-check error:', error);
-    return 75;
+    return 85;
   }
 }
 

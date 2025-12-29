@@ -1,45 +1,74 @@
 interface SkeletonProps {
   className?: string;
-  variant?: 'text' | 'circular' | 'rectangular';
-  width?: string;
-  height?: string;
+  variant?: 'text' | 'title' | 'button' | 'card' | 'circle' | 'custom';
+  width?: string | number;
+  height?: string | number;
 }
 
 export default function Skeleton({
   className = '',
-  variant = 'rectangular',
+  variant = 'text',
   width,
   height,
 }: SkeletonProps) {
-  const baseStyles = 'animate-pulse bg-gray-700/50 rounded';
-  
-  const variantStyles = {
-    text: 'h-4 rounded',
-    circular: 'rounded-full',
-    rectangular: 'rounded-lg',
+  const variantClasses = {
+    text: 'h-4 w-full',
+    title: 'h-6 w-3/5',
+    button: 'h-10 w-28',
+    card: 'h-48 w-full',
+    circle: 'h-12 w-12 rounded-full',
+    custom: '',
   };
 
   const style: React.CSSProperties = {};
-  if (width) style.width = width;
-  if (height) style.height = height;
+  if (width) style.width = typeof width === 'number' ? `${width}px` : width;
+  if (height) style.height = typeof height === 'number' ? `${height}px` : height;
 
   return (
     <div
-      className={`${baseStyles} ${variantStyles[variant]} ${className}`}
+      className={`skeleton ${variantClasses[variant]} ${className}`}
       style={style}
       aria-hidden="true"
     />
   );
 }
 
-// Pre-built skeleton components for common use cases
+// Pre-built skeleton layouts for common use cases
 export function SkeletonCard() {
   return (
-    <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-2xl p-6 space-y-4">
-      <Skeleton variant="rectangular" height="24px" width="60%" />
-      <Skeleton variant="text" width="100%" />
-      <Skeleton variant="text" width="80%" />
-      <Skeleton variant="rectangular" height="40px" width="120px" />
+    <div className="glass rounded-xl p-6 space-y-4">
+      <Skeleton variant="title" />
+      <Skeleton />
+      <Skeleton width="80%" />
+      <div className="flex gap-2">
+        <Skeleton variant="button" />
+        <Skeleton variant="button" />
+      </div>
+    </div>
+  );
+}
+
+export function SkeletonDescription() {
+  return (
+    <div className="space-y-3">
+      <Skeleton />
+      <Skeleton width="95%" />
+      <Skeleton width="88%" />
+      <Skeleton />
+      <Skeleton width="72%" />
+    </div>
+  );
+}
+
+export function SkeletonStats() {
+  return (
+    <div className="flex gap-4">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="flex items-center gap-2">
+          <Skeleton variant="circle" width={32} height={32} />
+          <Skeleton width={60} />
+        </div>
+      ))}
     </div>
   );
 }
@@ -48,22 +77,8 @@ export function SkeletonList({ count = 3 }: { count?: number }) {
   return (
     <div className="space-y-4">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-4">
-          <div className="flex items-start gap-4">
-            <Skeleton variant="rectangular" width="120px" height="120px" className="rounded-lg" />
-            <div className="flex-1 space-y-2">
-              <Skeleton variant="rectangular" height="20px" width="40%" />
-              <Skeleton variant="text" width="100%" />
-              <Skeleton variant="text" width="70%" />
-              <div className="flex gap-2 mt-4">
-                <Skeleton variant="rectangular" height="32px" width="80px" />
-                <Skeleton variant="rectangular" height="32px" width="80px" />
-              </div>
-            </div>
-          </div>
-        </div>
+        <SkeletonCard key={i} />
       ))}
     </div>
   );
 }
-

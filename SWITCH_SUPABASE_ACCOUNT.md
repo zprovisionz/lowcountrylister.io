@@ -153,3 +153,5 @@ After switching accounts, test:
 **Note:** Your code is already set up correctly - no code changes needed! Just update environment variables and run migrations on the correct Supabase project.
 
 
+
+

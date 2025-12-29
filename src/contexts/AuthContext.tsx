@@ -127,6 +127,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           linkAnonymousSession().catch((err) => {
             logger.warn('Failed to link anonymous session on auth change:', err);
           });
+          
+          // Check for pending generation ID and redirect to advanced options
+          const pendingGenerationId = sessionStorage.getItem('pendingGenerationId');
+          if (pendingGenerationId) {
+            sessionStorage.removeItem('pendingGenerationId');
+            // Small delay to ensure session is fully established
+            setTimeout(() => {
+              window.history.pushState({}, '', `/generate?generationId=${pendingGenerationId}`);
+              window.dispatchEvent(new PopStateEvent('popstate'));
+            }, 500);
+          }
         }
       } else {
         setProfile(null);
@@ -238,12 +249,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const canGenerate = (): boolean => {
     if (!profile) return false;
     const tier = profile.subscription_tier;
-    if (tier === 'pro' || tier === 'pro_plus') return true; // Unlimited
+    if (tier === 'pro' || tier === 'pro_plus' || tier === 'team') return true; // Unlimited
     if (tier === 'free') {
-      return profile.generations_this_month < 3;
+      return profile.generations_this_month < 10;
     }
     if (tier === 'starter') {
-      return profile.generations_this_month < 50;
+      return profile.generations_this_month < 100;
     }
     return false;
   };
@@ -252,12 +263,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!profile) return false;
     const tier = profile.subscription_tier;
     if (tier === 'free') return false;
-    if (tier === 'pro_plus') return true; // Unlimited
+    if (tier === 'pro_plus') return true; // Unlimited (100/mo, but treat as unlimited)
+    if (tier === 'team') {
+      // Team tier has 150 shared credits - this would need team context to check properly
+      // For now, allow if user is on team tier
+      return true;
+    }
     if (tier === 'pro') {
-      return profile.staging_credits_used_this_month < 10;
+      return profile.staging_credits_used_this_month < 30;
     }
     if (tier === 'starter') {
-      const total = 3 + (profile.staging_credits_bonus || 0);
+      const total = 10 + (profile.staging_credits_bonus || 0);
       return profile.staging_credits_used_this_month < total;
     }
     return false;
@@ -266,12 +282,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const getRemainingGenerations = (): number | 'unlimited' => {
     if (!profile) return 0;
     const tier = profile.subscription_tier;
-    if (tier === 'pro' || tier === 'pro_plus') return 'unlimited';
+    if (tier === 'pro' || tier === 'pro_plus' || tier === 'team') return 'unlimited';
     if (tier === 'free') {
-      return Math.max(0, 3 - profile.generations_this_month);
+      return Math.max(0, 10 - profile.generations_this_month);
     }
     if (tier === 'starter') {
-      return Math.max(0, 50 - profile.generations_this_month);
+      return Math.max(0, 100 - profile.generations_this_month);
     }
     return 0;
   };
@@ -280,12 +296,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!profile) return 0;
     const tier = profile.subscription_tier;
     if (tier === 'free') return 0;
-    if (tier === 'pro_plus') return 'unlimited';
+    if (tier === 'pro_plus' || tier === 'team') {
+      // Pro+ has 100, Team has 150, but for UI purposes show as "plenty"
+      return 'unlimited';
+    }
     if (tier === 'pro') {
-      return Math.max(0, 10 - profile.staging_credits_used_this_month);
+      return Math.max(0, 30 - profile.staging_credits_used_this_month);
     }
     if (tier === 'starter') {
-      const total = 3 + (profile.staging_credits_bonus || 0);
+      const total = 10 + (profile.staging_credits_bonus || 0);
       return Math.max(0, total - profile.staging_credits_used_this_month);
     }
     return 0;

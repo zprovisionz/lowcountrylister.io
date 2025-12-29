@@ -1,7 +1,7 @@
 import { ButtonHTMLAttributes, ReactNode } from 'react';
 import { Loader2 } from 'lucide-react';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'ghost' | 'danger';
+export type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'ghost' | 'danger' | 'neon-cyan' | 'neon-magenta';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -20,6 +20,8 @@ const variantStyles: Record<ButtonVariant, string> = {
   tertiary: 'bg-gray-800/50 text-gray-300 hover:bg-gray-800 border border-gray-600 hover:border-gray-500 focus:ring-gray-500 disabled:border-gray-700',
   ghost: 'text-gray-300 hover:text-white hover:bg-gray-800/50 focus:ring-gray-500 disabled:text-gray-600',
   danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 disabled:bg-red-600/50',
+  'neon-cyan': 'bg-transparent text-[#00f5ff] border-2 border-[#00f5ff] hover:bg-[#00f5ff]/10 hover:shadow-[0_0_20px_rgba(0,245,255,0.5)] focus:ring-[#00f5ff] disabled:opacity-50 btn-laser',
+  'neon-magenta': 'bg-transparent text-[#ff00ff] border-2 border-[#ff00ff] hover:bg-[#ff00ff]/10 hover:shadow-[0_0_20px_rgba(255,0,255,0.5)] focus:ring-[#ff00ff] disabled:opacity-50 btn-laser',
 };
 
 const sizeStyles: Record<ButtonSize, string> = {

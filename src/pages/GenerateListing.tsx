@@ -16,7 +16,10 @@ import {
   ChevronDown,
   Zap,
   Edit3,
+  Upload,
+  Database,
 } from 'lucide-react';
+import Navigation from '../components/Navigation';
 import ResultsDisplay from '../components/ResultsDisplay';
 import UpgradeModal from '../components/UpgradeModal';
 import StepIndicator, { Step } from '../components/steps/StepIndicator';
@@ -24,12 +27,15 @@ import PropertyBasicsStep from '../components/steps/PropertyBasicsStep';
 import PhotosStep from '../components/steps/PhotosStep';
 import AmenitiesSelector, { idToLabel } from '../components/AmenitiesSelector';
 import ReviewStep from '../components/steps/ReviewStep';
+import BulkUploader from '../components/BulkUploader';
 import { NotificationContainer, NotificationType } from '../components/Notification';
 import Alert from '../components/ui/Alert';
 import Button from '../components/ui/Button';
 import { neighborhoodService, NeighborhoodDetectionResult } from '../services/neighborhoodService';
 import { mapPropertyTypeToAPI } from '../lib/propertyTypes';
 import { logger } from '../lib/logger';
+
+type GenerateTab = 'quick' | 'bulk' | 'mls';
 
 const STEPS: Step[] = [
   { id: 'basics', title: 'Property Basics', shortTitle: 'Basics', icon: Home },
@@ -90,6 +96,85 @@ export default function GenerateListing() {
     type: NotificationType;
     duration?: number;
   }>>([]);
+
+  // Load generation by ID from query parameter
+  useEffect(() => {
+    const loadGeneration = async () => {
+      if (!user) return;
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const generationId = urlParams.get('generationId');
+      
+      if (!generationId) return;
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        const response = await fetch(`/api/get-generation?id=${generationId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        });
+
+        if (!response.ok) {
+          showNotification('Could not load generation. Starting fresh.', 'warning');
+          return;
+        }
+
+        const result = await response.json();
+        if (result.success && result.data) {
+          const gen = result.data;
+          
+          // Pre-populate form fields
+          if (gen.address) setAddress(gen.address);
+          if (gen.bedrooms) setBedrooms(gen.bedrooms.toString());
+          if (gen.bathrooms) setBathrooms(gen.bathrooms.toString());
+          if (gen.square_feet) setSquareFeet(gen.square_feet.toString());
+          if (gen.property_type) {
+            // Map API property type to display name
+            const propertyTypeMap: Record<string, string> = {
+              'single_family': 'Single Family Home',
+              'condo': 'Condo',
+              'townhouse': 'Townhouse',
+              'multi_family': 'Multi-Family',
+            };
+            setPropertyType(propertyTypeMap[gen.property_type] || gen.property_type);
+          }
+          if (gen.amenities && Array.isArray(gen.amenities)) {
+            setSelectedAmenities(gen.amenities);
+          }
+          if (gen.include_airbnb !== undefined) setIncludeAirbnb(gen.include_airbnb);
+          if (gen.include_social !== undefined) setIncludeSocial(gen.include_social);
+
+          // Show existing generation in results
+          if (gen.mls_description) {
+            const authenticity = neighborhoodService.calculateCharlestonAuthenticity(gen.mls_description);
+            setResults({
+              mls: gen.mls_description,
+              airbnb: gen.airbnb_description || undefined,
+              social: gen.social_captions || undefined,
+              confidence: gen.confidence_level || 'medium',
+              generationId: gen.id,
+              authenticity: {
+                score: authenticity.score,
+                suggestions: authenticity.suggestions,
+              },
+            });
+            // Jump to review step to show results
+            setCurrentStep(3);
+            showNotification('Welcome! Here\'s your listing preview. Add more details to enhance it.', 'success');
+          }
+        }
+      } catch (error) {
+        logger.error('Error loading generation:', error);
+        showNotification('Could not load generation. Starting fresh.', 'warning');
+      }
+    };
+
+    loadGeneration();
+  }, [user]);
 
   useEffect(() => {
     if (address.length > 10) {
@@ -725,25 +810,10 @@ export default function GenerateListing() {
       <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-blue-500/10 to-transparent"></div>
       <div className="absolute bottom-0 left-0 right-0 h-2 bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-500"></div>
 
-      <header className="bg-gray-900/50 border-b border-gray-800/50 shadow-lg sticky top-0 z-40 backdrop-blur-sm relative">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <button
-            onClick={() => {
-              window.history.pushState({}, '', '/');
-              window.dispatchEvent(new PopStateEvent('popstate'));
-            }}
-            className="flex items-center gap-3 hover:opacity-80 transition"
-          >
-            <Waves className="w-8 h-8 text-blue-400" />
-            <div>
-              <h1 className="text-xl font-bold text-white">Lowcountry Listings AI</h1>
-              <p className="text-xs text-gray-400 hidden sm:block">
-                Hyper-local Charleston listing descriptions in seconds
-              </p>
-            </div>
-          </button>
-
-          <div className="relative">
+      <Navigation currentPath="/generate" />
+      
+      <div className="max-w-6xl mx-auto px-4 py-4">
+        <div className="relative">
             {user ? (
               <>
                 <button
@@ -798,10 +868,88 @@ export default function GenerateListing() {
             )}
           </div>
         </div>
-      </header>
 
       <main id="main-content" className="max-w-4xl mx-auto px-4 py-8 md:py-12 relative z-10" tabIndex={-1}>
-        {showWarning && (
+        {/* Tab Navigation */}
+        <div className="mb-8 border-b border-gray-700/50">
+          <nav className="flex gap-2" aria-label="Generation tabs">
+            <button
+              onClick={() => setActiveTab('quick')}
+              className={`px-6 py-3 font-medium transition relative ${
+                activeTab === 'quick'
+                  ? 'text-[#00f5ff] border-b-2 border-[#00f5ff]'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4" />
+                Quick Generate
+              </div>
+            </button>
+            {profile && ['starter', 'pro', 'pro_plus', 'team'].includes(profile.subscription_tier || '') && (
+              <button
+                onClick={() => setActiveTab('bulk')}
+                className={`px-6 py-3 font-medium transition relative ${
+                  activeTab === 'bulk'
+                    ? 'text-[#00f5ff] border-b-2 border-[#00f5ff]'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Upload className="w-4 h-4" />
+                  Bulk Upload
+                </div>
+              </button>
+            )}
+            <button
+              onClick={() => setActiveTab('mls')}
+              className={`px-6 py-3 font-medium transition relative ${
+                activeTab === 'mls'
+                  ? 'text-[#00f5ff] border-b-2 border-[#00f5ff]'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Database className="w-4 h-4" />
+                MLS Import
+              </div>
+            </button>
+          </nav>
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === 'bulk' && user ? (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold text-white mb-2">Bulk CSV Generation</h2>
+              <p className="text-gray-400">Upload a CSV file to generate listings for multiple properties at once.</p>
+            </div>
+            <BulkUploader
+              onUpload={async (file) => {
+                const formData = new FormData();
+                formData.append('file', file);
+                const response = await fetch('/api/bulk/upload', {
+                  method: 'POST',
+                  body: formData,
+                });
+                if (!response.ok) throw new Error('Upload failed');
+              }}
+              maxRows={100}
+            />
+          </div>
+        ) : activeTab === 'mls' ? (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold text-white mb-2">MLS Integration</h2>
+              <p className="text-gray-400">Connect your MLS account to automatically pull property data.</p>
+            </div>
+            <Alert variant="info">
+              MLS integration coming soon. For now, use Quick Generate or Bulk Upload.
+            </Alert>
+          </div>
+        ) : (
+          <>
+            {showWarning && (
           <div className="mb-6">
             <Alert variant="warning">
               <div>
@@ -1000,6 +1148,8 @@ export default function GenerateListing() {
             />
           )}
         </form>
+          </>
+        )}
       </main>
 
       <footer className="bg-gray-900/50 border-t border-gray-800/50 mt-12 backdrop-blur-sm relative z-10">

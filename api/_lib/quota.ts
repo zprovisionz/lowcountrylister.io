@@ -147,6 +147,86 @@ export async function incrementStagingCount(
     .eq('id', userId);
 }
 
+export function canBulkGenerate(
+  profile: UserProfile,
+  requestedRows: number
+): {
+  allowed: boolean;
+  reason?: string;
+  max_rows?: number;
+} {
+  const tier = SUBSCRIPTION_TIERS[profile.subscription_tier];
+
+  if (!tier) {
+    return { allowed: false, reason: 'Invalid subscription tier' };
+  }
+
+  if (!tier.has_bulk_generation) {
+    return {
+      allowed: false,
+      reason: 'Bulk generation is not available on your plan. Upgrade to Starter or higher.',
+    };
+  }
+
+  if (tier.bulk_job_max_rows === 0) {
+    return {
+      allowed: false,
+      reason: 'Bulk generation is not available on your plan.',
+    };
+  }
+
+  if (requestedRows > tier.bulk_job_max_rows) {
+    return {
+      allowed: false,
+      reason: `Maximum ${tier.bulk_job_max_rows} rows per job on ${tier.name} plan. You requested ${requestedRows} rows.`,
+      max_rows: tier.bulk_job_max_rows,
+    };
+  }
+
+  return { allowed: true, max_rows: tier.bulk_job_max_rows };
+}
+
+export async function canCreateBulkJob(
+  profile: UserProfile
+): Promise<{
+  allowed: boolean;
+  reason?: string;
+}> {
+  const tier = SUBSCRIPTION_TIERS[profile.subscription_tier];
+
+  if (!tier || !tier.has_bulk_generation) {
+    return {
+      allowed: false,
+      reason: 'Bulk generation is not available on your plan.',
+    };
+  }
+
+  if (tier.bulk_jobs_per_day === -1) {
+    return { allowed: true }; // Unlimited
+  }
+
+  const supabase = createServiceClient();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const { count } = await supabase
+    .from('bulk_jobs')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', profile.id)
+    .gte('created_at', today.toISOString());
+
+  const jobsToday = count || 0;
+
+  if (jobsToday >= tier.bulk_jobs_per_day) {
+    return {
+      allowed: false,
+      reason: `Maximum ${tier.bulk_jobs_per_day} bulk jobs per day on ${tier.name} plan. You've already created ${jobsToday} today.`,
+    };
+  }
+
+  return { allowed: true };
+}
+
 export async function checkRateLimit(
   userId: string
 ): Promise<{ allowed: boolean; reason?: string }> {
